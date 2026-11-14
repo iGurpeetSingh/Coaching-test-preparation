@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import PaperBuilder from "./features/papers/PaperBuilder";
 
 const workspaceLinks = [
   ["Dashboard", "⌂"],
@@ -26,6 +27,7 @@ function App() {
   const [active, setActive] = useState("Dashboard");
   const [query, setQuery] = useState("");
   const [showCreate, setShowCreate] = useState(false);
+  const [builderMode, setBuilderMode] = useState<"automatic" | "manual">("automatic");
   const filteredTests = useMemo(
     () => upcomingTests.filter((test) => test.name.toLowerCase().includes(query.toLowerCase())),
     [query]
@@ -84,7 +86,9 @@ function App() {
             <button className="primary-button" onClick={() => setShowCreate(true)}><span>＋</span> Create Test</button>
           </div>
 
-          {active !== "Dashboard" && active !== "Tests & Exams" ? (
+          {active === "Paper Builder" ? (
+            <PaperBuilder key={builderMode} initialMode={builderMode} onBack={() => setActive("Dashboard")} />
+          ) : active !== "Dashboard" && active !== "Tests & Exams" ? (
             <div className="placeholder-panel">
               <div className="placeholder-icon">✦</div>
               <h2>{active} workspace</h2>
@@ -138,10 +142,10 @@ function App() {
         <section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
           <button className="modal-close" onClick={() => setShowCreate(false)} aria-label="Close">×</button>
           <div className="modal-kicker">ASSESSMENT WORKFLOW</div><h2 id="create-title">Create a new test</h2><p>Choose how you want to prepare the assessment.</p>
-          <button className="choice-row" onClick={() => { setShowCreate(false); setActive("Question Bank"); }}>
+          <button className="choice-row" onClick={() => { setBuilderMode("manual"); setShowCreate(false); setActive("Paper Builder"); }}>
             <span className="choice-icon">✎</span><span><strong>Build paper manually</strong><small>Select approved questions and arrange sections.</small></span><b>→</b>
           </button>
-          <button className="choice-row" onClick={() => { setShowCreate(false); setActive("Tests & Exams"); }}>
+          <button className="choice-row" onClick={() => { setBuilderMode("automatic"); setShowCreate(false); setActive("Paper Builder"); }}>
             <span className="choice-icon">✦</span><span><strong>Generate from blueprint</strong><small>Set topics, difficulty, marks and question count.</small></span><b>→</b>
           </button>
           <div className="modal-note">Next build step: connect these flows to the versioned Question Bank and Paper Generator.</div>
