@@ -153,8 +153,8 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [tests, filter, searchQuery, now]);
 
   const studentTests = useMemo(
-    () => tests.filter((test) => test.isPublished).sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()),
-    [tests]
+    () => tests.filter((test) => test.isPublished && test.className === studentClass).sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()),
+    [tests, studentClass]
   );
 
   function resetForm() {
