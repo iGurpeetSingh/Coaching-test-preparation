@@ -134,8 +134,8 @@ function parseExamDate(value: string): Date | null {
 function parsePastedPaper(raw: string): ParsedPaper {
   const header = (label: string) => new RegExp("^\\s*" + label + "\\s*[:=-]\\s*(.+)$", "im").exec(raw)?.[1]?.trim() || "";
   const title = header("(?:Exam|(?:Exam\\s*)?(?:Title|Name|Paper))");
-  const subject = header("Subject") || "Subject to confirm";
-  const className = header("(?:Class|Batch)") || "Class 10";
+  const subject = header("Subject");
+  const className = header("(?:Class|Batch)");
   const dateText = header("(?:Exam\\s*)?Date");
   const timeText = header("(?:Exam\\s*)?Time");
   const date = dateText ? parseExamDate(dateText) : new Date(Date.now() + 60 * 60 * 1000);
@@ -238,8 +238,8 @@ function parsePastedPaper(raw: string): ParsedPaper {
   if (!dateText) warnings.push("Exam Date header not found; default date is one hour from now.");
   else if (!date) warnings.push("Exam Date could not be read. Use DD-MM-YYYY.");
   if (!timeText) warnings.push("Exam Time header not found; default time is used.");
-  if (subject === "Subject to confirm") warnings.push("Subject header not found; choose the correct subject before publishing.");
-  if (!header("(?:Class|Batch)")) warnings.push("Class / Batch header not found; confirm the target class before publishing.");
+  if (!subject) warnings.push("Subject header not found; enter the subject before saving or publishing.");
+  if (!className) warnings.push("Class / Batch header not found; enter the target class before saving or publishing.");
   if (objective.length !== 50) warnings.push("Objective section has " + objective.length + " questions; exactly 50 are required for a 100-mark paper.");
   if (objective.some((question) => question.options.some((option) => !option))) warnings.push("One or more objective questions are missing options.");
   if (objective.some((question) => question.correctIndex < 0)) warnings.push("Some objective answers are missing from the answer key.");
@@ -248,7 +248,7 @@ function parsePastedPaper(raw: string): ParsedPaper {
   if (written.some((question) => question.marks !== 2 && question.marks !== 4 && question.marks !== 6)) warnings.push("Written questions must show marks as (2 marks), (4 marks) or (6 marks).");
   if (writtenTotal !== 100) warnings.push("Written question marks currently total " + writtenTotal + "; they must total 100.");
   return {
-    title: title || (subject === "Subject to confirm" ? "Imported Exam" : subject + " Exam"),
+    title: title || (subject ? subject + " Exam" : "Imported Exam"),
     subject,
     className,
     startAt,
@@ -365,11 +365,20 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   function saveImportedPapers() {
     if (!parsedPaper) return;
     const groupId = makeId("exam");
+    if (!parsedPaper.title.trim() || !parsedPaper.subject.trim() || !parsedPaper.className.trim()) {
+      setImportError("Enter the exam title, subject and class before saving the imported drafts.");
+      return;
+    }
+    const parsedStart = new Date(parsedPaper.startAt);
+    if (Number.isNaN(parsedStart.getTime())) {
+      setImportError("Choose a valid exam date and time before saving the drafts.");
+      return;
+    }
     const base = {
-      title: parsedPaper.title,
-      subject: parsedPaper.subject,
-      className: parsedPaper.className,
-      startAt: new Date(parsedPaper.startAt).toISOString(),
+      title: parsedPaper.title.trim(),
+      subject: parsedPaper.subject.trim(),
+      className: parsedPaper.className.trim(),
+      startAt: parsedStart.toISOString(),
       instructions: "Read the instructions carefully. Do not refresh or close the exam while attempting.",
       isPublished: false,
       examGroupId: groupId,
@@ -480,6 +489,9 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
 
   function publishValidation(test: ExamTest): string[] {
     const problems: string[] = [];
+    if (!test.title.trim()) problems.push("Exam title is required.");
+    if (!test.subject.trim()) problems.push("Subject is required.");
+    if (!test.className.trim()) problems.push("Class / Batch is required.");
     if (test.paperType === "objective") {
       if (test.questions.length !== 50) problems.push("Objective paper must contain exactly 50 MCQs.");
       if (test.questions.some((question) => question.marks !== 2)) problems.push("Every objective question must be worth 2 marks.");
