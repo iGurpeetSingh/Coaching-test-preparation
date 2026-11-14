@@ -140,7 +140,10 @@ export default function StudentExamRunner({ paper, apiBaseUrl, onClose }: Props)
     const timer = window.setInterval(() => {
       const remaining = Math.max(0, Math.floor((Date.parse(attempt.expiresAt) - Date.now()) / 1000));
       setRemainingSeconds(remaining);
-      if (remaining === 0) void submitExam();
+      if (remaining === 0) {
+        window.clearInterval(timer);
+        void submitExam();
+      }
     }, 1000);
     return () => window.clearInterval(timer);
   }, [attempt, result, submitExam]);
