@@ -37,7 +37,7 @@ function App() {
   const renderNav = (items: ReadonlyArray<readonly [string, string]>) => items.map(([label, icon]) => (
     <button key={label} className={active === label ? "nav-item active" : "nav-item"} onClick={() => setActive(label)}>
       <span className="nav-icon">{icon}</span>{label}
-      {label === "Tests & Exams" && <span className="nav-count">3</span>}
+      {label === "Tests & Exams" && (() => { try { const saved = JSON.parse(window.localStorage.getItem("coaching-pro.tests.v1") || "[]"); return Array.isArray(saved) && saved.length > 0 ? <span className="nav-count">{saved.length}</span> : null; } catch { return null; } })()}
     </button>
   ));
 
