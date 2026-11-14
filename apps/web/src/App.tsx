@@ -20,7 +20,7 @@ const managementLinks = [
 
 const upcomingTests = [
   { name: "Physics Mock Test 01", batch: "Class 12 · Science A", date: "18 Nov 2026", status: "Ready" },
-  { name: "Mathematics Weekly Test", batch: "JEE Foundation", date: "20 Nov 2026", status: "Draft" },
+  { name: "Mathematics Weekly Test", batch: "JEE Foundation", date: "20 Nov 2026", status: "Scheduled" },
   { name: "Chemistry Chapter Test", batch: "Class 11 · Science B", date: "22 Nov 2026", status: "Scheduled" }
 ];
 
@@ -133,7 +133,7 @@ function App() {
                 </div>
                 <div className="table-footer"><span>Showing {filteredTests.length} of {upcomingTests.length} sample tests</span><span>Prototype data</span></div>
               </div>
-              <p className="demo-note">Illustrative sample figures only. Live institute data will appear when the relevant modules and database are connected.</p>
+              <p className="demo-note">Illustrative sample figures only. Live institute data will appear when the relevant modules and API connections are configured.</p>
             </>
           )}
         </section>
