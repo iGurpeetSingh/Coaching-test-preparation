@@ -101,6 +101,16 @@ export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?:
     void loadPapers();
   }, [loadPapers]);
 
+  // Keep the student exam list in sync with papers published from the Android control app.
+  // The active exam runner is intentionally excluded so a running paper is not replaced mid-attempt.
+  useEffect(() => {
+    if (activePaper) return;
+    const paperSync = window.setInterval(() => {
+      void loadPapers(true);
+    }, 15000);
+    return () => window.clearInterval(paperSync);
+  }, [activePaper, loadPapers]);
+
   useEffect(() => {
     const clock = window.setInterval(() => setClock(Date.now()), 15000);
     return () => window.clearInterval(clock);
