@@ -150,7 +150,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
     const search = searchQuery.trim().toLowerCase();
     const matchesSearch = !search || [test.title, test.subject, test.className].some((value) => value.toLowerCase().includes(search));
     return matchesFilter && matchesSearch;
-  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [tests, filter, searchQuery]);
+  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()), [tests, filter, searchQuery, now]);
 
   const studentTests = useMemo(
     () => tests.filter((test) => test.isPublished).sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()),
