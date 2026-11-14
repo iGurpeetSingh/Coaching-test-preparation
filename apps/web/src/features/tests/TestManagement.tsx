@@ -387,7 +387,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
           ))}</div>
         </section>
         <section className="tm-panel tm-attempt-panel">
-          <div className="tm-panel-title"><div><h2>Student submissions & results</h2><p>Track started attempts and open submitted scorecards.</p></div><span>${testAttempts.filter((attempt) => attempt.submittedAt).length} submitted</span></div>
+          <div className="tm-panel-title"><div><h2>Student submissions & results</h2><p>Track started attempts and open submitted scorecards.</p></div><span>{testAttempts.filter((attempt) => attempt.submittedAt).length} submitted</span></div>
           {testAttempts.length === 0 ? <div className="tm-empty-small">No student attempts yet. Launch the test and students can start from the Student Portal preview.</div> : (
             <div className="tm-attempt-list">{testAttempts.map((attempt) => {
               const submitted = Boolean(attempt.submittedAt);
