@@ -32,3 +32,54 @@
 .student-exam-empty,.student-exam-empty-state{font-size:10px;color:#9b94a5;padding:15px 0}
 .student-exam-connection-note{font-size:9px;color:#9b7b48;background:#fff9ed;border:1px solid #f2e7d1;border-radius:8px;padding:10px 12px;margin:14px 0 0}
 @media(max-width:760px){.student-exams-grid{grid-template-columns:1fr}.student-exams-heading{align-items:flex-start;flex-direction:column}.student-exams-refresh{align-self:flex-start}}
+
+
+.student-runner{width:100%;color:#302942}
+.student-runner-back{border:0;background:transparent;color:#70618f;font-size:10px;font-weight:700;padding:3px 0 14px;cursor:pointer}
+.student-runner-header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:4px 0 16px}
+.student-runner-header h1{font:800 23px 'Segoe UI',Arial,sans-serif;color:#302942;margin:6px 0 4px;overflow-wrap:anywhere}
+.student-runner-header p{font-size:10px;color:#8e879c;margin:0}
+.student-runner-identity{max-width:560px;background:#fff;border:1px solid #ebe8f1;border-radius:12px;padding:18px;display:grid;gap:12px}
+.student-runner-identity h2{font-size:14px;margin:0;color:#3c344f}
+.student-runner-identity label,.student-runner-answer{display:grid;gap:6px;font-size:10px;font-weight:700;color:#756d84}
+.student-runner-identity input,.student-runner-answer textarea{width:100%;border:1px solid #e7e2ef;border-radius:8px;background:#fff;color:#3e3652;padding:10px 11px;font:400 11px 'Segoe UI',Arial,sans-serif;outline:none}
+.student-runner-identity input:focus,.student-runner-answer textarea:focus{border-color:#9a81d5;box-shadow:0 0 0 3px #7651c414}
+.student-runner-identity>p{font-size:9px;line-height:1.55;color:#9991a3;margin:0}
+.student-runner-identity .student-exam-open:disabled{opacity:.55;cursor:wait}
+.student-runner-instructions{max-width:780px;border:1px solid #eee8f6;background:#faf8fd;color:#776e89;border-radius:9px;padding:11px 13px;font-size:9px;line-height:1.6;white-space:pre-wrap}
+.student-runner-timer{display:grid;gap:3px;min-width:118px;text-align:center;padding:10px 12px;border-radius:10px;background:#f0eafb;color:#6742bd}
+.student-runner-timer span{font-size:8px;font-weight:800;letter-spacing:1px}
+.student-runner-timer strong{font:800 19px 'Segoe UI',Arial,sans-serif;font-variant-numeric:tabular-nums}
+.student-runner-timer.is-warning{background:#fff0e9;color:#bc6332}
+.student-runner-layout{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:14px;align-items:start}
+.student-runner-question,.student-runner-palette{background:#fff;border:1px solid #ebe8f1;border-radius:12px;padding:17px}
+.student-runner-question{min-height:330px}
+.student-runner-question-meta{display:flex;justify-content:space-between;gap:10px;color:#938ba0;font-size:8px;font-weight:800;letter-spacing:.7px}
+.student-runner-question h2{font:700 17px/1.55 'Segoe UI',Arial,sans-serif;color:#352e49;margin:22px 0}
+.student-runner-options{display:grid;gap:9px}
+.student-runner-options button{display:flex;align-items:center;gap:11px;text-align:left;border:1px solid #eae6f0;background:#fff;border-radius:9px;padding:11px 12px;color:#5a5369;font-size:10px;min-height:43px;cursor:pointer}
+.student-runner-options button>span{display:grid;place-items:center;flex:none;width:23px;height:23px;border-radius:7px;background:#f3f0f7;color:#776d8c;font-weight:800}
+.student-runner-options button.is-selected{border-color:#8e70d1;background:#f8f5ff;color:#5135a1}
+.student-runner-options button.is-selected>span{background:#6c47c5;color:#fff}
+.student-runner-answer{margin:18px 0}
+.student-runner-answer textarea{min-height:170px;resize:vertical;line-height:1.6;font-weight:400}
+.student-runner-navigation{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #f0edf4;margin-top:22px;padding-top:13px}
+.student-runner-navigation button{border:1px solid #e7e2ef;border-radius:7px;background:#fff;padding:9px 12px;color:#655581;font-size:9px;font-weight:700;cursor:pointer}
+.student-runner-navigation button:disabled{opacity:.4;cursor:not-allowed}
+.student-runner-navigation span{font-size:8px;color:#938ca0}
+.student-runner-palette h3{font:700 12px 'Segoe UI',Arial,sans-serif;color:#3b344e;margin:0}
+.student-runner-palette p{font-size:8px;color:#9891a4;margin:5px 0 13px}
+.student-runner-palette>div{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.student-runner-palette>div button{height:31px;border:1px solid #e9e5ef;border-radius:7px;background:#fff;color:#827a91;font-size:9px;cursor:pointer}
+.student-runner-palette>div button.is-answered{background:#e8f8ef;border-color:#d5efdf;color:#26875d}
+.student-runner-palette>div button.is-current{outline:2px solid #a58be0;outline-offset:1px}
+.student-runner-submit{width:100%;margin-top:18px;border:0;border-radius:8px;background:#6e4bc1;color:#fff;padding:11px 12px;font-size:10px;font-weight:750;cursor:pointer}
+.student-runner-submit:disabled{opacity:.55;cursor:wait}
+.student-runner-result{max-width:650px;background:#fff;border:1px solid #ebe8f1;border-radius:12px;padding:24px;margin:15px 0}
+.student-runner-result-kicker{font-size:8px;font-weight:800;letter-spacing:1px;color:#8d7db2}
+.student-runner-result h2{font:800 24px 'Segoe UI',Arial,sans-serif;color:#302942;margin:9px 0}
+.student-runner-result h2 small{font-size:12px;color:#8e879c}
+.student-runner-result p{font-size:10px;color:#776f86;line-height:1.6}
+.student-runner-receipt{border-top:1px solid #eeeaf4;padding-top:12px;margin-top:15px;overflow-wrap:anywhere;font-size:8px!important;color:#a19aaa!important}
+@media(max-width:760px){.student-runner-layout{grid-template-columns:1fr}.student-runner-palette{order:-1}.student-runner-header{align-items:flex-start}.student-runner-header h1{font-size:19px}.student-runner-timer{min-width:92px}.student-runner-timer strong{font-size:15px}}
+@media(max-width:520px){.student-runner-question,.student-runner-palette{padding:13px}.student-runner-navigation{flex-wrap:wrap}.student-runner-navigation span{order:3;width:100%;text-align:center}.student-runner-header{flex-direction:column}.student-runner-timer{align-self:flex-start}}
