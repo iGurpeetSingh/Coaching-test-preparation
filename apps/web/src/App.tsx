@@ -88,7 +88,7 @@ function App() {
           {active === "Tests & Exams" ? (
             <StudentExamLibrary searchQuery={query} />
           ) : active === "Results" ? (
-            <TestManagement onBack={() => setActive("Dashboard")} onOpenPaperBuilder={() => setActive("Paper Builder")} searchQuery={query} showResultsInitially />
+            <TestManagement onBack={() => setActive("Dashboard")} searchQuery={query} showResultsInitially />
           ) : active !== "Dashboard" && active !== "Tests & Exams" ? (
             <div className="placeholder-panel">
               <div className="placeholder-icon">✦</div>
