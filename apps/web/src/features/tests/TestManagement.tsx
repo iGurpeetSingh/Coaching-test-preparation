@@ -375,7 +375,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
           <div className="tm-instructions"><strong>Instructions for students</strong><p>{selectedTest.instructions || "No additional instructions."}</p></div>
         </section>
         <section className="tm-panel">
-          <div className="tm-panel-title"><div><h2>Question paper</h2><p>Teacher preview including the correct answer for each MCQ.</p></div><button className="tm-button tm-button-soft" onClick={() => startExam(selectedTest, true)}>Preview as student ↗</button></div>
+          <div className="tm-panel-title"><div><h2>Question paper</h2><p>Teacher preview including the correct answer for each MCQ.</p></div><button className="tm-button tm-button-soft" disabled={selectedTest.questions.length === 0} title={selectedTest.questions.length === 0 ? "Add at least one question before previewing." : "Open a timed student preview"} onClick={() => startExam(selectedTest, true)}>Preview as student ↗</button></div>
           <div className="tm-paper-questions">{selectedTest.questions.map((question, index) => (
             <article key={question.id}><div><strong>Q{index + 1}. {question.prompt}</strong><span>{question.marks} marks</span></div><div className="tm-paper-options">{question.options.map((option, optionIndex) => <span className={optionIndex === question.correctIndex ? "tm-correct-option" : ""} key={optionIndex}>{String.fromCharCode(65 + optionIndex)}. {option}</span>)}</div></article>
           ))}</div>
