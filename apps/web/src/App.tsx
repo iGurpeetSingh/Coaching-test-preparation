@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import PaperBuilder from "./features/papers/PaperBuilder";
 import TestManagement from "./features/tests/TestManagement";
+import StudentExamLibrary from "./features/tests/StudentExamLibrary";
 
 const workspaceLinks = [
   ["Dashboard", "⌂"],
   ["Students", "♙"],
   ["Batches", "▦"],
   ["Courses", "▤"],
-  ["Question Bank", "◈"],
+  ["Paper", "◈"],
   ["Tests & Exams", "▣"],
   ["Results", "▥"]
 ] as const;
@@ -37,7 +38,7 @@ function App() {
   const renderNav = (items: ReadonlyArray<readonly [string, string]>) => items.map(([label, icon]) => (
     <button key={label} className={active === label ? "nav-item active" : "nav-item"} onClick={() => setActive(label)}>
       <span className="nav-icon">{icon}</span>{label}
-      {label === "Tests & Exams" && (() => { try { const saved = JSON.parse(window.localStorage.getItem("coaching-pro.tests.v1") || "[]"); return Array.isArray(saved) && saved.length > 0 ? <span className="nav-count">{saved.length}</span> : null; } catch { return null; } })()}
+
     </button>
   ));
 
@@ -87,8 +88,10 @@ function App() {
             <button className="primary-button" onClick={() => setActive("Tests & Exams")}><span>＋</span> Create Test</button>
           </div>}
 
-          {(active === "Tests & Exams" || active === "Results") ? (
-            <TestManagement onBack={() => setActive("Dashboard")} onOpenPaperBuilder={() => setActive("Paper Builder")} searchQuery={query} showResultsInitially={active === "Results"} />
+          {active === "Tests & Exams" ? (
+            <StudentExamLibrary searchQuery={query} />
+          ) : active === "Results" ? (
+            <TestManagement onBack={() => setActive("Dashboard")} onOpenPaperBuilder={() => setActive("Paper Builder")} searchQuery={query} showResultsInitially />
           ) : active === "Paper Builder" ? (
             <PaperBuilder key={builderMode} initialMode={builderMode} onBack={() => setActive("Dashboard")} />
           ) : active !== "Dashboard" && active !== "Tests & Exams" ? (
@@ -110,7 +113,7 @@ function App() {
               <div className="section-heading"><div><h2>Quick actions</h2><p>Common tasks for your institute</p></div></div>
               <div className="quick-grid">
                 <button className="quick-card quick-purple" onClick={() => setActive("Tests & Exams")}><span>＋</span><strong>Create a test</strong><small>Build a paper or online exam</small></button>
-                <button className="quick-card quick-blue" onClick={() => setActive("Question Bank")}><span>◈</span><strong>Add questions</strong><small>Grow your question bank</small></button>
+                <button className="quick-card quick-blue" onClick={() => setActive("Paper")}><span>◈</span><strong>View papers</strong><small>Open the exam paper library</small></button>
                 <button className="quick-card quick-green" onClick={() => setActive("Batches")}><span>▦</span><strong>Manage batches</strong><small>Organise classes and students</small></button>
                 <button className="quick-card quick-orange" onClick={() => setActive("Reports")}><span>▥</span><strong>View reports</strong><small>Track academic performance</small></button>
               </div>
