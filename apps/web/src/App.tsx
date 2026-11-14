@@ -87,8 +87,8 @@ function App() {
             <button className="primary-button" onClick={() => setActive("Tests & Exams")}><span>＋</span> Create Test</button>
           </div>}
 
-          {active === "Tests & Exams" ? (
-            <TestManagement onBack={() => setActive("Dashboard")} onOpenPaperBuilder={() => setActive("Paper Builder")} searchQuery={query} />
+          {(active === "Tests & Exams" || active === "Results") ? (
+            <TestManagement onBack={() => setActive("Dashboard")} onOpenPaperBuilder={() => setActive("Paper Builder")} searchQuery={query} showResultsInitially={active === "Results"} />
           ) : active === "Paper Builder" ? (
             <PaperBuilder key={builderMode} initialMode={builderMode} onBack={() => setActive("Dashboard")} />
           ) : active !== "Dashboard" && active !== "Tests & Exams" ? (
