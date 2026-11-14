@@ -262,12 +262,11 @@ function parsePastedPaper(raw: string): ParsedPaper {
 
 type Props = {
   onBack: () => void;
-  onOpenPaperBuilder: () => void;
   searchQuery?: string;
   showResultsInitially?: boolean;
 };
 
-export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery = "", showResultsInitially = false }: Props) {
+export default function TestManagement({ onBack, searchQuery = "", showResultsInitially = false }: Props) {
   const [tests, setTests] = useState<ExamTest[]>(() => readStored<ExamTest>(TESTS_STORAGE_KEY));
   const [attempts, setAttempts] = useState<ExamAttempt[]>(() => readStored<ExamAttempt>(ATTEMPTS_STORAGE_KEY));
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -399,7 +398,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
     setPasteText("");
     setParsedPaper(null);
     setSelectedTestId(imported[0]?.id || "");
-    setView("list");
+    setView(showResultsInitially ? "resultsCenter" : "list");
   }
 
   function resetForm() {
@@ -869,7 +868,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
     }
     return (
       <div className="tm-module">
-        <div className="tm-page-head"><button className="tm-back" onClick={() => setView("list")}>← Tests & Exams</button><div><span className="tm-eyebrow">RESULTS & EVALUATION CENTER</span><h1>Results dashboard</h1><p>Bulk objective scores, written-paper marking queue and combined 200-mark scorecards.</p></div><span className="tm-step-pill">Auto + Teacher review</span></div>
+        <div className="tm-page-head"><button className="tm-back" onClick={onBack}>← Dashboard</button><div><span className="tm-eyebrow">RESULTS & EVALUATION CENTER</span><h1>Results dashboard</h1><p>Bulk objective scores, written-paper marking queue and combined 200-mark scorecards.</p></div><span className="tm-step-pill">Auto + Teacher review</span></div>
         <div className="tm-stats tm-result-stats">
           <article><span className="tm-stat-icon purple">✓</span><div><strong>{objectiveRows.length}</strong><small>Objective evaluated</small></div></article>
           <article><span className="tm-stat-icon orange">✎</span><div><strong>{writtenPending.length}</strong><small>Written awaiting marking</small></div></article>
@@ -935,8 +934,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
           <button className="tm-button tm-button-outline" onClick={() => { setStudentMode((value) => !value); setView("list"); }}>{studentMode ? "↩ Teacher / Admin" : "◉ Student portal preview"}</button>
           {!studentMode && <>
             <button className="tm-button tm-button-outline" onClick={() => { setView("resultsCenter"); setFormError(""); }}>Results & Evaluation</button>
-            <button className="tm-button tm-button-soft" onClick={() => { setPasteText(""); setParsedPaper(null); setImportError(""); setView("import"); }}>Paste / Import Paper</button>
-            <button className="tm-button tm-button-primary" onClick={() => beginCreate()}>＋ Create test</button>
+            
           </>}
         </div>
       </div>
@@ -970,8 +968,8 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
             <article><span className="tm-stat-icon green">●</span><div><strong>{counts.live}</strong><small>Live now</small></div></article>
             <article><span className="tm-stat-icon orange">✓</span><div><strong>{counts.completed}</strong><small>Completed</small></div></article>
           </div>
-          <div className="tm-toolbar"><div className="tm-tabs">{filters.map((key) => <button key={key} className={filter === key ? "active" : ""} onClick={() => setFilter(key)}>{statusLabel(key)}<span>{counts[key]}</span></button>)}</div><button className="tm-paper-link" onClick={onOpenPaperBuilder}>Open sample Paper Builder ↗</button></div>
-          {visibleTests.length === 0 ? <div className="tm-empty-state"><div>▤</div><h3>{searchQuery ? "No matching tests found" : filter === "all" ? "No tests created yet" : "No " + statusLabel(filter).toLowerCase() + " tests"}</h3><p>{searchQuery ? "Try another test name, subject or class." : "Create a test, add questions and publish it to see it in this list."}</p>{filter === "all" && <button className="tm-button tm-button-primary" onClick={() => beginCreate()}>＋ Create your first test</button>}</div> : (
+          <div className="tm-toolbar"><div className="tm-tabs">{filters.map((key) => <button key={key} className={filter === key ? "active" : ""} onClick={() => setFilter(key)}>{statusLabel(key)}<span>{counts[key]}</span></button>)}</div></div>
+          {visibleTests.length === 0 ? <div className="tm-empty-state"><div>▤</div><h3>{searchQuery ? "No matching tests found" : filter === "all" ? "No tests created yet" : "No " + statusLabel(filter).toLowerCase() + " tests"}</h3><p>{searchQuery ? "Try another test name, subject or class." : "Create a test, add questions and publish it to see it in this list."}</p></div> : (
             <div className="tm-panel tm-table-panel"><div className="tm-table-wrap"><table className="tm-table"><thead><tr><th>TEST NAME</th><th>CLASS / BATCH</th><th>DATE & TIME</th><th>QUESTIONS</th><th>STATUS</th><th>ATTEMPTS</th><th></th></tr></thead><tbody>{visibleTests.map((test) => {
               const status = statusFor(test);
               const attemptCount = attempts.filter((attempt) => attempt.testId === test.id && attempt.submittedAt).length;
