@@ -538,7 +538,7 @@ export default function TestManagement({ onBack, searchQuery = "", showResultsIn
     setTests((current) => current.filter((item) => item.id !== test.id));
     setAttempts((current) => current.filter((attempt) => attempt.testId !== test.id));
     setSelectedTestId("");
-    setView("list");
+    setView(showResultsInitially ? "resultsCenter" : "list");
   }
 
   function startExam(test: ExamTest, preview = false, resume?: ExamAttempt) {
@@ -546,7 +546,7 @@ export default function TestManagement({ onBack, searchQuery = "", showResultsIn
     if (!preview && !resume && (!studentName.trim() || !studentRoll.trim())) {
       setStudentIdentityError("Enter your name and roll number before starting the exam.");
       setStudentMode(true);
-      setView("list");
+      setView(showResultsInitially ? "resultsCenter" : "list");
       return;
     }
     const attempt = resume || {
@@ -635,7 +635,7 @@ export default function TestManagement({ onBack, searchQuery = "", showResultsIn
     return (
       <div className="tm-module">
         <div className="tm-page-head">
-          <button className="tm-back" onClick={() => { setView("list"); setParsedPaper(null); setImportError(""); }}>← Back to Exams</button>
+          <button className="tm-back" onClick={() => { setView(showResultsInitially ? "resultsCenter" : "list"); setParsedPaper(null); setImportError(""); }}>← Back to Exams</button>
           <div><span className="tm-eyebrow">PAPER IMPORT STUDIO</span><h1>Paste complete question paper</h1><p>Paste both sections together. The importer reads exam metadata, splits MCQ and written questions, and prepares two separate drafts.</p></div>
           <span className="tm-step-pill">One paste · Two exams</span>
         </div>
@@ -688,7 +688,7 @@ export default function TestManagement({ onBack, searchQuery = "", showResultsIn
     return (
       <div className="tm-module">
         <div className="tm-page-head">
-          <button className="tm-back" onClick={() => setView("list")}>← Back to tests</button>
+          <button className="tm-back" onClick={() => setView(showResultsInitially ? "resultsCenter" : "list")}>← Back to tests</button>
           <div><span className="tm-eyebrow">ASSESSMENT SETUP</span><h1>{editingId ? "Edit draft test" : "Create a new test"}</h1><p>Enter exam details, add MCQ questions, then save a draft or publish the schedule.</p></div>
           <span className="tm-step-pill">01 · Details & questions</span>
         </div>
@@ -737,7 +737,7 @@ export default function TestManagement({ onBack, searchQuery = "", showResultsIn
     return (
       <div className="tm-module">
         <div className="tm-page-head">
-          <button className="tm-back" onClick={() => setView("list")}>← All tests</button>
+          <button className="tm-back" onClick={() => setView(showResultsInitially ? "resultsCenter" : "list")}>← All tests</button>
           <div><span className="tm-eyebrow">TEST OVERVIEW</span><h1>{selectedTest.title}</h1><p>{selectedTest.className} · {selectedTest.subject} · {selectedTest.paperType === "written" ? "Written paper" : "Objective paper"} · {questionCount(selectedTest)} questions</p></div>
           <span className={"tm-status tm-status-" + status}>{statusLabel(status)}</span>
         </div>
@@ -782,7 +782,7 @@ export default function TestManagement({ onBack, searchQuery = "", showResultsIn
           {!selectedTest.isPublished && <button className="tm-button tm-button-primary" onClick={() => publishTest(selectedTest)}>Publish {selectedTest.paperType === "written" ? "Written" : selectedTest.paperType === "objective" ? "Objective" : ""} Exam →</button>}
           {selectedTest.isPublished && <button className="tm-button tm-button-danger" onClick={() => unpublishTest(selectedTest)}>Turn OFF / Unpublish this paper</button>}
           {status === "upcoming" && selectedTest.isPublished && <button className="tm-button tm-button-primary" onClick={() => publishNow(selectedTest)}>Launch now →</button>}
-          {status === "live" && <button className="tm-button tm-button-primary" onClick={() => { setStudentMode(true); setView("list"); }}>Open student portal ↗</button>}
+          {status === "live" && <button className="tm-button tm-button-primary" onClick={() => { setStudentMode(true); setView(showResultsInitially ? "resultsCenter" : "list"); }}>Open student portal ↗</button>}
           <button className="tm-button tm-button-danger" onClick={() => deleteTest(selectedTest)}>Delete test</button>
         </div>
         {formError && <div className="tm-error" role="alert">{formError}</div>}
@@ -910,7 +910,7 @@ export default function TestManagement({ onBack, searchQuery = "", showResultsIn
     const percentage = selectedAttempt.totalMarks ? Math.round(score / selectedAttempt.totalMarks * 100) : 0;
     return (
       <div className="tm-module">
-        <div className="tm-page-head"><button className="tm-back" onClick={() => { setView("list"); }}>← Back to tests</button><div><span className="tm-eyebrow">ASSESSMENT RESULT</span><h1>Test submitted successfully</h1><p>{currentTest.title} · {currentTest.className}</p></div><span className="tm-status tm-status-completed">Submitted</span></div>
+        <div className="tm-page-head"><button className="tm-back" onClick={() => { setView(showResultsInitially ? "resultsCenter" : "list"); }}>← Back to tests</button><div><span className="tm-eyebrow">ASSESSMENT RESULT</span><h1>Test submitted successfully</h1><p>{currentTest.title} · {currentTest.className}</p></div><span className="tm-status tm-status-completed">Submitted</span></div>
         <div className="tm-result-hero"><div className="tm-score-ring"><strong>{isWrittenPending ? "—" : percentage + "%"}</strong><span>{isWrittenPending ? "Pending" : "Score"}</span></div><div>{isWrittenPending ? <><h2>Awaiting teacher evaluation</h2><p>Your written answers have been submitted successfully. Marks will appear after the teacher reviews your answer sheet.</p></> : <><h2>{score} <small>/ {selectedAttempt.totalMarks} marks</small></h2><p>{currentTest.paperType === "written" ? "Teacher-reviewed descriptive answers" : currentTest.questions.filter((question) => selectedAttempt.answers[question.id] === question.correctIndex).length + " correct · " + currentTest.questions.filter((question) => selectedAttempt.answers[question.id] !== undefined && selectedAttempt.answers[question.id] !== question.correctIndex).length + " incorrect · " + currentTest.questions.filter((question) => selectedAttempt.answers[question.id] === undefined).length + " unanswered"}</p></>}<span>{selectedAttempt.preview ? "Preview attempt — not a published student result" : "Submitted " + formatDate(selectedAttempt.submittedAt || "")}</span></div></div>
         <section className="tm-panel"><div className="tm-panel-title"><div><h2>{currentTest.paperType === "written" ? "Submitted written answers" : "Objective answer review"}</h2><p>{currentTest.paperType === "written" ? "Your typed answers are saved. Teacher marks will be shown after evaluation." : "Your answers compared with the answer key."}</p></div></div><div className="tm-review-list">{currentTest.paperType === "written"
           ? (currentTest.writtenQuestions || []).map((question, index) => <article key={question.id}><strong>Q{index + 1}. {question.prompt} ({question.marks} marks)</strong><span>{selectedAttempt.writtenAnswers?.[question.id] || "Not answered"}</span><small>{isWrittenPending ? "Evaluation pending" : "Awarded marks: " + (selectedAttempt.manualMarks?.[question.id] ?? 0) + "/" + question.marks}</small></article>)
@@ -919,7 +919,7 @@ export default function TestManagement({ onBack, searchQuery = "", showResultsIn
             const correct = answer === question.correctIndex;
             return <article key={question.id}><strong>Q{index + 1}. {question.prompt}</strong><span className={correct ? "tm-review-correct" : "tm-review-wrong"}>{answer === undefined ? "Not answered" : "Your answer: " + question.options[answer]}</span><small>Correct answer: {question.options[question.correctIndex]}</small></article>;
           })}</div></section>
-        <div className="tm-detail-actions"><button className="tm-button tm-button-primary" onClick={() => { setView("list"); setStudentMode(false); }}>Done</button></div>
+        <div className="tm-detail-actions"><button className="tm-button tm-button-primary" onClick={() => { setView(showResultsInitially ? "resultsCenter" : "list"); setStudentMode(false); }}>Done</button></div>
       </div>
     );
   }
@@ -931,7 +931,7 @@ export default function TestManagement({ onBack, searchQuery = "", showResultsIn
       <div className="tm-page-head">
         <div><span className="tm-eyebrow">{studentMode ? "STUDENT WORKSPACE" : "ASSESSMENT MANAGEMENT"}</span><h1>{studentMode ? "My Tests & Exams" : "Tests & Exams"}</h1><p>{studentMode ? "Open a live test, continue an attempt or review a scheduled assessment." : "Create question papers, schedule exams and monitor student submissions."}</p></div>
         <div className="tm-head-actions">
-          <button className="tm-button tm-button-outline" onClick={() => { setStudentMode((value) => !value); setView("list"); }}>{studentMode ? "↩ Teacher / Admin" : "◉ Student portal preview"}</button>
+          <button className="tm-button tm-button-outline" onClick={() => { setStudentMode((value) => !value); setView(showResultsInitially ? "resultsCenter" : "list"); }}>{studentMode ? "↩ Teacher / Admin" : "◉ Student portal preview"}</button>
           {!studentMode && <>
             <button className="tm-button tm-button-outline" onClick={() => { setView("resultsCenter"); setFormError(""); }}>Results & Evaluation</button>
             
