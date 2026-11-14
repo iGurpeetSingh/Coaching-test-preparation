@@ -828,7 +828,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
 
   if (view === "resultsCenter") {
     const submitted = attempts.filter((attempt) => Boolean(attempt.submittedAt) && !attempt.preview);
-    const objectiveRows = submitted.filter((attempt) => tests.find((test) => test.id === attempt.testId)?.paperType !== "written");
+    const objectiveRows = submitted.filter((attempt) => tests.find((test) => test.id === attempt.testId)?.paperType !== "written").sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     const writtenPending = submitted.filter((attempt) => {
       const test = tests.find((item) => item.id === attempt.testId);
       return test?.paperType === "written" && !attempt.gradedAt;
@@ -844,8 +844,8 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
       const key = test.examGroupId + ":" + attempt.rollNumber.trim().toLowerCase();
       const row = combined.get(key) || { name: attempt.studentName || "Student", roll: attempt.rollNumber, objectiveMax: 100, writtenMax: 100 };
       if (test.paperType === "written") {
-        if (attempt.gradedAt) row.written = attempt.score;
-      } else if (typeof attempt.score === "number") row.objective = attempt.score;
+        if (row.written === undefined && attempt.gradedAt) row.written = attempt.score;
+      } else if (row.objective === undefined && typeof attempt.score === "number") row.objective = attempt.score;
       combined.set(key, row);
     }
     return (
@@ -859,12 +859,12 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
         </div>
         <section className="tm-panel tm-results-section">
           <div className="tm-panel-title"><div><h2>Objective results — automatic</h2><p>Every submitted MCQ is scored against the saved answer key. These rows do not need manual review.</p></div><span>{objectiveRows.length} ready</span></div>
-          <div className="tm-table-wrap"><table className="tm-table"><thead><tr><th>STUDENT</th><th>ROLL NO.</th><th>EXAM</th><th>SCORE</th><th>PERCENTAGE</th><th>SUBMITTED</th></tr></thead><tbody>{objectiveRows.map((attempt) => {
+          <div className="tm-table-wrap"><table className="tm-table"><thead><tr><th>RANK</th><th>STUDENT</th><th>ROLL NO.</th><th>EXAM</th><th>SCORE</th><th>PERCENTAGE</th><th>SUBMITTED</th></tr></thead><tbody>{objectiveRows.map((attempt, index) => {
             const test = tests.find((item) => item.id === attempt.testId);
             const score = attempt.score ?? 0;
             const percent = attempt.totalMarks ? Math.round(score / attempt.totalMarks * 100) : 0;
-            return <tr key={attempt.id}><td><strong>{attempt.studentName || "Student"}</strong></td><td>{attempt.rollNumber || "—"}</td><td>{test?.title || "Exam"}</td><td><strong>{score}/{attempt.totalMarks}</strong></td><td>{percent}%</td><td>{formatDate(attempt.submittedAt || "")}</td></tr>;
-          })}{objectiveRows.length === 0 && <tr><td colSpan={6} className="tm-table-empty">Objective results will appear here as students submit.</td></tr>}</tbody></table></div>
+            return <tr key={attempt.id}><td>{index + 1}</td><td><strong>{attempt.studentName || "Student"}</strong></td><td>{attempt.rollNumber || "—"}</td><td>{test?.title || "Exam"}</td><td><strong>{score}/{attempt.totalMarks}</strong></td><td>{percent}%</td><td>{formatDate(attempt.submittedAt || "")}</td></tr>;
+          })}{objectiveRows.length === 0 && <tr><td colSpan={7} className="tm-table-empty">Objective results will appear here as students submit.</td></tr>}</tbody></table></div>
         </section>
         <section className="tm-panel tm-results-section">
           <div className="tm-panel-title"><div><h2>Written evaluation queue</h2><p>Open submitted answer sheets and award marks question by question.</p></div><span>{writtenPending.length} pending</span></div>
