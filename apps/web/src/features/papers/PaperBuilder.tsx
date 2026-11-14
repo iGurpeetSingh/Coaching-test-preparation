@@ -39,17 +39,13 @@ const initialRules: BlueprintRule[] = [
   { topic: "Electromagnetic Induction", easy: 0, medium: 1, hard: 0 }
 ];
 
-function difficultyLabel(value: Difficulty) {
-  return value.toLowerCase();
-}
-
 type Props = { initialMode?: "automatic" | "manual"; onBack: () => void };
 
 export default function PaperBuilder({ initialMode = "automatic", onBack }: Props) {
   const [mode, setMode] = useState<"automatic" | "manual">(initialMode);
   const [title, setTitle] = useState("Physics Mock Test 01");
   const [course, setCourse] = useState("Class 12");
-  const [subject, setSubject] = useState("Physics");
+  const subject = "Physics";
   const [duration, setDuration] = useState(60);
   const [negativeMarking, setNegativeMarking] = useState(false);
   const [rules, setRules] = useState<BlueprintRule[]>(initialRules);
@@ -71,6 +67,11 @@ export default function PaperBuilder({ initialMode = "automatic", onBack }: Prop
   }
 
   function generateAutomatic() {
+    if (totalRequested === 0) {
+      setPaper([]);
+      setMessage("Set at least one question in the blueprint before generating a paper.");
+      return;
+    }
     const selected: Question[] = [];
     const shortages: string[] = [];
     const selectedIds = new Set<string>();
@@ -139,7 +140,7 @@ export default function PaperBuilder({ initialMode = "automatic", onBack }: Prop
             <div className="form-grid">
               <label className="field field-wide">Test name<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
               <label className="field">Course / Class<select value={course} onChange={(event) => setCourse(event.target.value)}><option>Class 12</option><option>Class 11</option><option>JEE Foundation</option><option>NEET Foundation</option></select></label>
-              <label className="field">Subject<select value={subject} onChange={(event) => setSubject(event.target.value)}><option>Physics</option><option>Chemistry</option><option>Mathematics</option><option>Biology</option></select></label>
+              <label className="field">Subject<input value={subject} readOnly /></label>
               <label className="field">Duration (minutes)<input type="number" min="5" max="300" value={duration} onChange={(event) => setDuration(Math.max(5, Number(event.target.value) || 5))} /></label>
               <label className="field checkbox-field"><input type="checkbox" checked={negativeMarking} onChange={(event) => setNegativeMarking(event.target.checked)} /> Enable negative marking <small>Scoring policy will be configured before exam publishing.</small></label>
             </div>
