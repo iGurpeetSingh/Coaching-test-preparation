@@ -881,17 +881,20 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   }
 
   if (view === "results" && selectedAttempt && currentTest) {
+    const isWrittenPending = currentTest.paperType === "written" && !selectedAttempt.gradedAt;
     const score = selectedAttempt.score ?? 0;
     const percentage = selectedAttempt.totalMarks ? Math.round(score / selectedAttempt.totalMarks * 100) : 0;
     return (
       <div className="tm-module">
         <div className="tm-page-head"><button className="tm-back" onClick={() => { setView("list"); setStudentMode(false); }}>← Back to tests</button><div><span className="tm-eyebrow">ASSESSMENT RESULT</span><h1>Test submitted successfully</h1><p>{currentTest.title} · {currentTest.className}</p></div><span className="tm-status tm-status-completed">Submitted</span></div>
-        <div className="tm-result-hero"><div className="tm-score-ring"><strong>{percentage}%</strong><span>Score</span></div><div><h2>{score} <small>/ {selectedAttempt.totalMarks} marks</small></h2><p>{currentTest.questions.filter((question) => selectedAttempt.answers[question.id] === question.correctIndex).length} correct · {currentTest.questions.filter((question) => selectedAttempt.answers[question.id] !== undefined && selectedAttempt.answers[question.id] !== question.correctIndex).length} incorrect · {currentTest.questions.filter((question) => selectedAttempt.answers[question.id] === undefined).length} unanswered</p><span>{selectedAttempt.preview ? "Preview attempt — not a published student result" : "Submitted " + formatDate(selectedAttempt.submittedAt || "")}</span></div></div>
-        <section className="tm-panel"><div className="tm-panel-title"><div><h2>Answer review</h2><p>Correct answers and your submitted choices.</p></div></div><div className="tm-review-list">{currentTest.questions.map((question, index) => {
-          const answer = selectedAttempt.answers[question.id];
-          const correct = answer === question.correctIndex;
-          return <article key={question.id}><strong>Q{index + 1}. {question.prompt}</strong><span className={correct ? "tm-review-correct" : "tm-review-wrong"}>{answer === undefined ? "Not answered" : "Your answer: " + question.options[answer]}</span><small>Correct answer: {question.options[question.correctIndex]}</small></article>;
-        })}</div></section>
+        <div className="tm-result-hero"><div className="tm-score-ring"><strong>{isWrittenPending ? "—" : percentage + "%"}</strong><span>{isWrittenPending ? "Pending" : "Score"}</span></div><div>{isWrittenPending ? <><h2>Awaiting teacher evaluation</h2><p>Your written answers have been submitted successfully. Marks will appear after the teacher reviews your answer sheet.</p></> : <><h2>{score} <small>/ {selectedAttempt.totalMarks} marks</small></h2><p>{currentTest.paperType === "written" ? "Teacher-reviewed descriptive answers" : currentTest.questions.filter((question) => selectedAttempt.answers[question.id] === question.correctIndex).length + " correct · " + currentTest.questions.filter((question) => selectedAttempt.answers[question.id] !== undefined && selectedAttempt.answers[question.id] !== question.correctIndex).length + " incorrect · " + currentTest.questions.filter((question) => selectedAttempt.answers[question.id] === undefined).length + " unanswered"}</p></>}<span>{selectedAttempt.preview ? "Preview attempt — not a published student result" : "Submitted " + formatDate(selectedAttempt.submittedAt || "")}</span></div></div>
+        <section className="tm-panel"><div className="tm-panel-title"><div><h2>{currentTest.paperType === "written" ? "Submitted written answers" : "Objective answer review"}</h2><p>{currentTest.paperType === "written" ? "Your typed answers are saved. Teacher marks will be shown after evaluation." : "Your answers compared with the answer key."}</p></div></div><div className="tm-review-list">{currentTest.paperType === "written"
+          ? (currentTest.writtenQuestions || []).map((question, index) => <article key={question.id}><strong>Q{index + 1}. {question.prompt} ({question.marks} marks)</strong><span>{selectedAttempt.writtenAnswers?.[question.id] || "Not answered"}</span><small>{isWrittenPending ? "Evaluation pending" : "Awarded marks: " + (selectedAttempt.manualMarks?.[question.id] ?? 0) + "/" + question.marks}</small></article>)
+          : currentTest.questions.map((question, index) => {
+            const answer = selectedAttempt.answers[question.id];
+            const correct = answer === question.correctIndex;
+            return <article key={question.id}><strong>Q{index + 1}. {question.prompt}</strong><span className={correct ? "tm-review-correct" : "tm-review-wrong"}>{answer === undefined ? "Not answered" : "Your answer: " + question.options[answer]}</span><small>Correct answer: {question.options[question.correctIndex]}</small></article>;
+          })}</div></section>
         <div className="tm-detail-actions"><button className="tm-button tm-button-primary" onClick={() => { setView("list"); setStudentMode(false); }}>Done</button></div>
       </div>
     );
