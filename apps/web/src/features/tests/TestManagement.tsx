@@ -103,6 +103,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [now, setNow] = useState(Date.now());
 
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("Mathematics");
@@ -116,6 +117,11 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   const [correctIndex, setCorrectIndex] = useState(0);
   const [questionMarks, setQuestionMarks] = useState(1);
   const [formError, setFormError] = useState("");
+
+  useEffect(() => {
+    const clock = window.setInterval(() => setNow(Date.now()), 15000);
+    return () => window.clearInterval(clock);
+  }, []);
 
   useEffect(() => {
     try { window.localStorage.setItem(TESTS_STORAGE_KEY, JSON.stringify(tests)); } catch { /* storage may be unavailable */ }
@@ -132,14 +138,14 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
 
   const counts = useMemo(() => ({
     all: tests.length,
-    upcoming: tests.filter((test) => statusFor(test) === "upcoming").length,
-    live: tests.filter((test) => statusFor(test) === "live").length,
-    completed: tests.filter((test) => statusFor(test) === "completed").length,
-    draft: tests.filter((test) => statusFor(test) === "draft").length
-  }), [tests]);
+    upcoming: tests.filter((test) => statusFor(test, now) === "upcoming").length,
+    live: tests.filter((test) => statusFor(test, now) === "live").length,
+    completed: tests.filter((test) => statusFor(test, now) === "completed").length,
+    draft: tests.filter((test) => statusFor(test, now) === "draft").length
+  }), [tests, now]);
 
   const visibleTests = useMemo(() => tests.filter((test) => {
-    const status = statusFor(test);
+    const status = statusFor(test, now);
     const matchesFilter = filter === "all" || status === filter;
     const search = searchQuery.trim().toLowerCase();
     const matchesSearch = !search || [test.title, test.subject, test.className].some((value) => value.toLowerCase().includes(search));
@@ -354,7 +360,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   }
 
   if (view === "details" && selectedTest) {
-    const status = statusFor(selectedTest);
+    const status = statusFor(selectedTest, now);
     const testAttempts = attempts.filter((attempt) => attempt.testId === selectedTest.id);
     return (
       <div className="tm-module">
@@ -387,7 +393,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
             else setTests((current) => current.map((item) => item.id === selectedTest.id ? { ...item, isPublished: true } : item));
           }}>Publish test →</button></>}
           {status === "upcoming" && <button className="tm-button tm-button-primary" onClick={() => publishNow(selectedTest)}>Launch test now →</button>}
-          {status === "live" && <button className="tm-button tm-button-primary" onClick={() => setStudentMode(true)}>Open student portal ↗</button>}
+          {status === "live" && <button className="tm-button tm-button-primary" onClick={() => { setStudentMode(true); setView("list"); }}>Open student portal ↗</button>}
           <button className="tm-button tm-button-danger" onClick={() => deleteTest(selectedTest)}>Delete test</button>
         </div>
         <p className="tm-storage-note">Saved in this browser. Student attempts and results on another device require a connected server and database.</p>
