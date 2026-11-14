@@ -575,6 +575,53 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
 
   const activeQuestion = currentTest?.questions[currentQuestion];
 
+  if (view === "import") {
+    return (
+      <div className="tm-module">
+        <div className="tm-page-head">
+          <button className="tm-back" onClick={() => { setView("list"); setParsedPaper(null); setImportError(""); }}>← Back to Exams</button>
+          <div><span className="tm-eyebrow">PAPER IMPORT STUDIO</span><h1>Paste complete question paper</h1><p>Paste both sections together. The importer reads exam metadata, splits MCQ and written questions, and prepares two separate drafts.</p></div>
+          <span className="tm-step-pill">One paste · Two exams</span>
+        </div>
+        <section className="tm-panel tm-import-panel">
+          <div className="tm-panel-title"><div><h2>Question paper text</h2><p>Use clear section headings and a separate answer key for objective questions.</p></div><span>01</span></div>
+          <textarea className="tm-paste-area" value={pasteText} onChange={(event) => { setPasteText(event.target.value); setParsedPaper(null); setImportError(""); }} placeholder={"Exam: Science Unit Test 01\nSubject: Science\nClass: Class 10\nDate: 20-11-2026\nTime: 10:00 AM\n\n[OBJECTIVE]\nQ1. Question text?\nA) Option one\nB) Option two\nC) Option three\nD) Option four\nAnswer: B\n... continue through Q50 ...\n\n[WRITTEN]\nQ1. Explain ... (2 marks)\nQ2. Describe ... (4 marks)\nQ3. Discuss ... (6 marks)\n... total written marks must equal 100 ..."} rows={14} />
+          <div className="tm-import-tools"><span>Supported headers: Exam, Subject, Class, Date (DD-MM-YYYY), Time (HH:MM AM/PM)</span><button className="tm-button tm-button-primary" onClick={handleParsePaper}>Parse & Preview →</button></div>
+          {importError && <div className="tm-error" role="alert">{importError}</div>}
+        </section>
+        {parsedPaper && (
+          <>
+            <div className="tm-import-summary">
+              <article><span>Exam</span><strong>{parsedPaper.title}</strong></article>
+              <article><span>Subject / Class</span><strong>{parsedPaper.subject} · {parsedPaper.className}</strong></article>
+              <article><span>Exam date</span><strong>{formatDate(new Date(parsedPaper.startAt).toISOString())}</strong></article>
+            </div>
+            <div className="tm-import-two">
+              <section className="tm-panel">
+                <div className="tm-panel-title"><div><h2>Objective paper</h2><p>50 MCQs · 2 marks each · 100 marks</p></div><span>{parsedPaper.objective.length}/50</span></div>
+                <div className="tm-import-progress"><i style={{ width: Math.min(100, parsedPaper.objective.length / 50 * 100) + "%" }} /></div>
+                <div className="tm-import-list">{parsedPaper.objective.slice(0, 5).map((question, index) => <article key={question.id}><strong>Q{index + 1}. {question.prompt}</strong><small>{question.options.filter(Boolean).length}/4 options · {question.correctIndex >= 0 ? "Answer key found" : "Answer key missing"}</small></article>)}</div>
+                {parsedPaper.objective.length > 5 && <p className="tm-import-more">+ {parsedPaper.objective.length - 5} more objective questions</p>}
+              </section>
+              <section className="tm-panel">
+                <div className="tm-panel-title"><div><h2>Written paper</h2><p>Long answers · 2, 4 and 6 marks · 100 marks</p></div><span>{parsedPaper.written.reduce((sum, question) => sum + question.marks, 0)}/100</span></div>
+                <div className="tm-import-progress"><i style={{ width: Math.min(100, parsedPaper.written.reduce((sum, question) => sum + question.marks, 0)) + "%" }} /></div>
+                <div className="tm-import-list">{parsedPaper.written.slice(0, 5).map((question, index) => <article key={question.id}><strong>Q{index + 1}. {question.prompt}</strong><small>{question.marks || "Marks missing"} marks</small></article>)}</div>
+                {parsedPaper.written.length > 5 && <p className="tm-import-more">+ {parsedPaper.written.length - 5} more written questions</p>}
+              </section>
+            </div>
+            <section className="tm-panel tm-import-warnings">
+              <h2>Import validation</h2>
+              {parsedPaper.warnings.length === 0 ? <p className="tm-validation-good">Both papers meet the expected structure. Review the preview, then save the two drafts.</p> : <ul>{parsedPaper.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>}
+              <p className="tm-validation-note">Drafts can be saved for correction. Publishing will be blocked until the objective paper has 50 complete MCQs with an answer key and the written paper totals exactly 100 marks.</p>
+            </section>
+            <div className="tm-form-actions"><button className="tm-button tm-button-outline" onClick={() => { setParsedPaper(null); setImportError(""); }}>Edit pasted text</button><button className="tm-button tm-button-primary" onClick={saveImportedPapers}>Save Objective + Written drafts →</button></div>
+          </>
+        )}
+      </div>
+    );
+  }
+
   if (view === "create") {
     return (
       <div className="tm-module">
