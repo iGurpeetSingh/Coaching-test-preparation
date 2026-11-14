@@ -197,3 +197,49 @@
   .tm-paper-options .tm-correct-option{font-weight:400!important;color:#333!important}
   @page{size:A4;margin:14mm}
 }
+
+.tm-import-panel{margin-bottom:14px}
+.tm-paste-area{width:100%;min-height:310px;resize:vertical;border:1px solid #e8e4ef;border-radius:9px;padding:13px;color:#3d354f;background:#fcfbfe;font:10px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;outline:none}
+.tm-paste-area:focus{border-color:#9b83d7;box-shadow:0 0 0 3px #7651c414}
+.tm-import-tools{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px}
+.tm-import-tools>span{font-size:8px;color:#9992a5;line-height:1.5}
+.tm-import-summary{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:11px;margin-bottom:13px}
+.tm-import-summary article{background:#fff;border:1px solid #ebe8f1;border-radius:10px;padding:12px}
+.tm-import-summary article span{display:block;font-size:8px;color:#9992a5;margin-bottom:5px}
+.tm-import-summary article strong{display:block;font-size:10px;color:#40374f}
+.tm-import-two{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.tm-import-progress{height:7px;background:#f0edf5;border-radius:10px;overflow:hidden;margin:-3px 0 12px}
+.tm-import-progress i{display:block;height:100%;background:#7652c7;border-radius:10px}
+.tm-import-list{display:grid;gap:8px}
+.tm-import-list article{border-top:1px solid #f0edf4;padding-top:8px}
+.tm-import-list article strong{display:block;font-size:9px;color:#453d55;line-height:1.5}
+.tm-import-list article small{display:block;font-size:8px;color:#9b94a5;margin-top:4px}
+.tm-import-more{font-size:8px;color:#897f99;margin:10px 0 0}
+.tm-import-warnings{margin-top:13px}
+.tm-import-warnings h2{font:700 12px 'Segoe UI',Arial,sans-serif;margin:0 0 8px;color:#3b334d}
+.tm-import-warnings ul{padding-left:18px;margin:0;color:#a06a35;font-size:9px;line-height:1.75}
+.tm-validation-good{color:#27865d;font-size:9px;margin:0 0 7px}
+.tm-validation-note{color:#9992a5;font-size:8px;line-height:1.6;margin:8px 0 0}
+.tm-student-identity{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;background:#fff;border:1px solid #ece9f2;border-radius:9px;margin:-7px 0 12px}
+.tm-student-identity .tm-field{font-size:8px}
+.tm-written-response{display:grid;gap:7px;margin:16px 0}
+.tm-written-response label{display:grid;gap:7px;color:#716980;font-size:9px;font-weight:700}
+.tm-written-response textarea{width:100%;min-height:140px;border:1px solid #e8e4ef;border-radius:9px;padding:12px;font:11px/1.65 'Segoe UI',Arial,sans-serif;color:#39324c;resize:vertical;outline:none}
+.tm-written-response textarea:focus{border-color:#9a80d6;box-shadow:0 0 0 3px #7651c414}
+.tm-written-response small{font-size:8px;color:#9b94a5}
+.tm-written-answer-lines{min-height:64px;padding:15px 10px;border-bottom:1px solid #d9d5df;border-top:1px solid #eeeaf2;margin-top:12px;color:#938b9d;font-size:8px}
+.tm-grade-list{display:grid;gap:15px}
+.tm-grade-list article{border-top:1px solid #f0edf4;padding-top:13px}
+.tm-grade-question{display:flex;justify-content:space-between;gap:10px}
+.tm-grade-question strong{font-size:10px;line-height:1.6;color:#40384f}
+.tm-grade-question span{font-size:8px;color:#8b829b;white-space:nowrap}
+.tm-grade-answer{margin:10px 0;padding:12px;background:#faf9fc;border:1px solid #efecf4;border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;color:#5f576f;font-size:10px;line-height:1.7;min-height:45px}
+.tm-grade-mark{max-width:180px}
+.tm-grade-mark input{height:35px;border:1px solid #e8e4ef;border-radius:7px;padding:0 9px;font-size:10px;color:#39324b}
+.tm-results-section{margin-bottom:14px}
+.tm-results-section .tm-panel-title>span{font-size:8px;color:#6742bd;background:#f1ecfb;border-radius:20px;padding:6px 9px}
+.tm-result-stats{margin-bottom:15px}
+.tm-table-empty{padding:24px!important;text-align:center!important;color:#a19aaa!important}
+.tm-paper-questions .tm-written-answer-lines{min-height:70px}
+@media(max-width:760px){.tm-import-two{grid-template-columns:1fr}.tm-import-summary{grid-template-columns:1fr 1fr}.tm-import-summary article:first-child{grid-column:1/-1}.tm-student-identity{grid-template-columns:1fr}.tm-import-tools{align-items:flex-start;flex-direction:column}.tm-import-tools button{width:100%}}
+@media print{.tm-written-answer-lines{border-bottom:1px solid #777!important;min-height:60px;color:transparent!important}.tm-paper-print-header{break-after:avoid}}
