@@ -648,11 +648,17 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
         </section>
         {parsedPaper && (
           <>
-            <div className="tm-import-summary">
-              <article><span>Exam</span><strong>{parsedPaper.title}</strong></article>
-              <article><span>Subject / Class</span><strong>{parsedPaper.subject} · {parsedPaper.className}</strong></article>
-              <article><span>Exam date</span><strong>{formatDate(new Date(parsedPaper.startAt).toISOString())}</strong></article>
-            </div>
+            <section className="tm-panel tm-import-metadata">
+              <div className="tm-panel-title"><div><h2>Confirm parsed exam details</h2><p>These fields are prefilled from the pasted paper. Correct anything the parser could not read.</p></div><span>Auto-filled</span></div>
+              <div className="tm-import-metadata-grid">
+                <label className="tm-field">Exam title<input value={parsedPaper.title} onChange={(event) => setParsedPaper((current) => current ? { ...current, title: event.target.value } : current)} /></label>
+                <label className="tm-field">Subject<input value={parsedPaper.subject} onChange={(event) => setParsedPaper((current) => current ? { ...current, subject: event.target.value } : current)} placeholder="Enter subject" /></label>
+                <label className="tm-field">Class / Batch<input value={parsedPaper.className} onChange={(event) => setParsedPaper((current) => current ? { ...current, className: event.target.value } : current)} placeholder="Enter class or batch" /></label>
+                <label className="tm-field">Exam date & time<input type="datetime-local" value={parsedPaper.startAt} onChange={(event) => setParsedPaper((current) => current ? { ...current, startAt: event.target.value } : current)} /></label>
+                <label className="tm-field">Objective duration (minutes)<input type="number" min="5" max="300" value={parsedPaper.objectiveDuration} onChange={(event) => setParsedPaper((current) => current ? { ...current, objectiveDuration: Math.max(5, Number(event.target.value) || 5) } : current)} /></label>
+                <label className="tm-field">Written duration (minutes)<input type="number" min="5" max="300" value={parsedPaper.writtenDuration} onChange={(event) => setParsedPaper((current) => current ? { ...current, writtenDuration: Math.max(5, Number(event.target.value) || 5) } : current)} /></label>
+              </div>
+            </section>
             <div className="tm-import-two">
               <section className="tm-panel">
                 <div className="tm-panel-title"><div><h2>Objective paper</h2><p>50 MCQs · 2 marks each · 100 marks</p></div><span>{parsedPaper.objective.length}/50</span></div>
