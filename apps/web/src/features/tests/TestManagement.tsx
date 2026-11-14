@@ -798,6 +798,88 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
     );
   }
 
+  if (view === "grade" && selectedAttempt && currentTest && currentTest.paperType === "written") {
+    const written = currentTest.writtenQuestions || [];
+    return (
+      <div className="tm-module">
+        <div className="tm-page-head"><button className="tm-back" onClick={() => setView("details")}>← Back to submissions</button><div><span className="tm-eyebrow">TEACHER EVALUATION</span><h1>Review written answer sheet</h1><p>{selectedAttempt.studentName || "Student"} · Roll no. {selectedAttempt.rollNumber || "—"} · {currentTest.title}</p></div><span className="tm-status tm-status-upcoming">Manual marking</span></div>
+        <section className="tm-panel">
+          <div className="tm-panel-title"><div><h2>Submitted written answers</h2><p>Read each response and award marks from zero up to the question maximum.</p></div><span>{written.length} questions</span></div>
+          <div className="tm-grade-list">{written.map((question, index) => (
+            <article key={question.id}>
+              <div className="tm-grade-question"><strong>Q{index + 1}. {question.prompt}</strong><span>Maximum {question.marks} marks</span></div>
+              <div className="tm-grade-answer">{selectedAttempt.writtenAnswers?.[question.id]?.trim() || "No answer submitted."}</div>
+              <label className="tm-field tm-grade-mark">Awarded marks<input type="number" min="0" max={question.marks} step="0.5" value={gradingMarks[question.id] ?? ""} onChange={(event) => setGradingMarks((current) => ({ ...current, [question.id]: event.target.value === "" ? undefined as unknown as number : Number(event.target.value) }))} placeholder={"0–" + question.marks} /></label>
+            </article>
+          ))}</div>
+        </section>
+        {formError && <div className="tm-error" role="alert">{formError}</div>}
+        <div className="tm-form-actions"><button className="tm-button tm-button-outline" onClick={() => setView("details")}>Save later</button><button className="tm-button tm-button-primary" onClick={() => saveWrittenGrade(selectedAttempt, currentTest)}>Save marks & publish result →</button></div>
+        <p className="tm-storage-note">Written marks are manually awarded by the teacher. This browser-only implementation does not use AI to decide final marks.</p>
+      </div>
+    );
+  }
+
+  if (view === "resultsCenter") {
+    const submitted = attempts.filter((attempt) => Boolean(attempt.submittedAt) && !attempt.preview);
+    const objectiveRows = submitted.filter((attempt) => tests.find((test) => test.id === attempt.testId)?.paperType !== "written");
+    const writtenPending = submitted.filter((attempt) => {
+      const test = tests.find((item) => item.id === attempt.testId);
+      return test?.paperType === "written" && !attempt.gradedAt;
+    });
+    const writtenGraded = submitted.filter((attempt) => {
+      const test = tests.find((item) => item.id === attempt.testId);
+      return test?.paperType === "written" && Boolean(attempt.gradedAt);
+    });
+    const combined = new Map<string, { name: string; roll: string; objective?: number; written?: number; objectiveMax: number; writtenMax: number }>();
+    for (const attempt of submitted) {
+      const test = tests.find((item) => item.id === attempt.testId);
+      if (!test?.examGroupId || !attempt.rollNumber) continue;
+      const key = test.examGroupId + ":" + attempt.rollNumber.trim().toLowerCase();
+      const row = combined.get(key) || { name: attempt.studentName || "Student", roll: attempt.rollNumber, objectiveMax: 100, writtenMax: 100 };
+      if (test.paperType === "written") {
+        if (attempt.gradedAt) row.written = attempt.score;
+      } else if (typeof attempt.score === "number") row.objective = attempt.score;
+      combined.set(key, row);
+    }
+    return (
+      <div className="tm-module">
+        <div className="tm-page-head"><button className="tm-back" onClick={() => setView("list")}>← Tests & Exams</button><div><span className="tm-eyebrow">RESULTS & EVALUATION CENTER</span><h1>Results dashboard</h1><p>Bulk objective scores, written-paper marking queue and combined 200-mark scorecards.</p></div><span className="tm-step-pill">Auto + Teacher review</span></div>
+        <div className="tm-stats tm-result-stats">
+          <article><span className="tm-stat-icon purple">✓</span><div><strong>{objectiveRows.length}</strong><small>Objective evaluated</small></div></article>
+          <article><span className="tm-stat-icon orange">✎</span><div><strong>{writtenPending.length}</strong><small>Written awaiting marking</small></div></article>
+          <article><span className="tm-stat-icon green">✓</span><div><strong>{writtenGraded.length}</strong><small>Written evaluated</small></div></article>
+          <article><span className="tm-stat-icon blue">▤</span><div><strong>{combined.size}</strong><small>Combined student records</small></div></article>
+        </div>
+        <section className="tm-panel tm-results-section">
+          <div className="tm-panel-title"><div><h2>Objective results — automatic</h2><p>Every submitted MCQ is scored against the saved answer key. These rows do not need manual review.</p></div><span>{objectiveRows.length} ready</span></div>
+          <div className="tm-table-wrap"><table className="tm-table"><thead><tr><th>STUDENT</th><th>ROLL NO.</th><th>EXAM</th><th>SCORE</th><th>PERCENTAGE</th><th>SUBMITTED</th></tr></thead><tbody>{objectiveRows.map((attempt) => {
+            const test = tests.find((item) => item.id === attempt.testId);
+            const score = attempt.score ?? 0;
+            const percent = attempt.totalMarks ? Math.round(score / attempt.totalMarks * 100) : 0;
+            return <tr key={attempt.id}><td><strong>{attempt.studentName || "Student"}</strong></td><td>{attempt.rollNumber || "—"}</td><td>{test?.title || "Exam"}</td><td><strong>{score}/{attempt.totalMarks}</strong></td><td>{percent}%</td><td>{formatDate(attempt.submittedAt || "")}</td></tr>;
+          })}{objectiveRows.length === 0 && <tr><td colSpan={6} className="tm-table-empty">Objective results will appear here as students submit.</td></tr>}</tbody></table></div>
+        </section>
+        <section className="tm-panel tm-results-section">
+          <div className="tm-panel-title"><div><h2>Written evaluation queue</h2><p>Open submitted answer sheets and award marks question by question.</p></div><span>{writtenPending.length} pending</span></div>
+          <div className="tm-table-wrap"><table className="tm-table"><thead><tr><th>STUDENT</th><th>ROLL NO.</th><th>EXAM</th><th>STATUS</th><th></th></tr></thead><tbody>{writtenPending.map((attempt) => {
+            const test = tests.find((item) => item.id === attempt.testId);
+            return <tr key={attempt.id}><td><strong>{attempt.studentName || "Student"}</strong></td><td>{attempt.rollNumber || "—"}</td><td>{test?.title || "Written Exam"}</td><td><span className="tm-status tm-status-upcoming">Needs marking</span></td><td><button className="tm-table-action" onClick={() => { setSelectedTestId(attempt.testId); setSelectedAttemptId(attempt.id); setGradingMarks(attempt.manualMarks || {}); setFormError(""); setView("grade"); }}>Review & grade →</button></td></tr>;
+          })}{writtenPending.length === 0 && <tr><td colSpan={5} className="tm-table-empty">No written answer sheets waiting for evaluation.</td></tr>}</tbody></table></div>
+        </section>
+        <section className="tm-panel tm-results-section">
+          <div className="tm-panel-title"><div><h2>Combined result — 200 marks</h2><p>Objective + teacher-graded written score for the same exam and roll number.</p></div></div>
+          <div className="tm-table-wrap"><table className="tm-table"><thead><tr><th>STUDENT</th><th>ROLL NO.</th><th>OBJECTIVE / 100</th><th>WRITTEN / 100</th><th>TOTAL / 200</th><th>STATUS</th></tr></thead><tbody>{Array.from(combined.entries()).map(([key, row]) => {
+            const complete = typeof row.objective === "number" && typeof row.written === "number";
+            const total = (row.objective || 0) + (row.written || 0);
+            return <tr key={key}><td><strong>{row.name}</strong></td><td>{row.roll}</td><td>{row.objective === undefined ? "Pending" : row.objective}</td><td>{row.written === undefined ? "Pending" : row.written}</td><td><strong>{complete ? total + "/200" : "—"}</strong></td><td><span className={"tm-status tm-status-" + (complete ? "completed" : "upcoming")}>{complete ? Math.round(total / 2) + "% Complete" : "Awaiting both papers"}</span></td></tr>;
+          })}{combined.size === 0 && <tr><td colSpan={6} className="tm-table-empty">Combined scores appear when a student has attempted both papers in the same exam group.</td></tr>}</tbody></table></div>
+        </section>
+        <div className="tm-detail-actions"><button className="tm-button tm-button-outline" onClick={() => window.print()}>Print results summary</button><button className="tm-button tm-button-primary" onClick={() => { const rows = [["Student","Roll","Objective","Written","Total"], ...Array.from(combined.values()).map((row) => [row.name,row.roll,String(row.objective ?? ""),String(row.written ?? ""),typeof row.objective === "number" && typeof row.written === "number" ? String(row.objective + row.written) : ""])]; const csv = rows.map((row) => row.map((cell) => '"' + cell.replace(/"/g, '""') + '"').join(",")).join("\\n"); const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = "exam-results.csv"; link.click(); URL.revokeObjectURL(url); }}>Export combined CSV ↓</button></div>
+      </div>
+    );
+  }
+
   if (view === "results" && selectedAttempt && currentTest) {
     const score = selectedAttempt.score ?? 0;
     const percentage = selectedAttempt.totalMarks ? Math.round(score / selectedAttempt.totalMarks * 100) : 0;
