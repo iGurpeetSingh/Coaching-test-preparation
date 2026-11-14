@@ -9,6 +9,27 @@ type ExamQuestion = {
   marks: number;
 };
 
+type WrittenQuestion = {
+  id: string;
+  prompt: string;
+  marks: number;
+  answerGuide?: string;
+};
+
+type PaperType = "objective" | "written";
+
+type ParsedPaper = {
+  title: string;
+  subject: string;
+  className: string;
+  startAt: string;
+  objectiveDuration: number;
+  writtenDuration: number;
+  objective: ExamQuestion[];
+  written: WrittenQuestion[];
+  warnings: string[];
+};
+
 type ExamTest = {
   id: string;
   title: string;
@@ -18,6 +39,9 @@ type ExamTest = {
   durationMinutes: number;
   instructions: string;
   questions: ExamQuestion[];
+  paperType?: PaperType;
+  examGroupId?: string;
+  writtenQuestions?: WrittenQuestion[];
   isPublished: boolean;
   createdAt: string;
 };
@@ -27,7 +51,12 @@ type ExamAttempt = {
   testId: string;
   startedAt: string;
   answers: Record<string, number>;
+  writtenAnswers?: Record<string, string>;
+  manualMarks?: Record<string, number>;
+  studentName?: string;
+  rollNumber?: string;
   submittedAt?: string;
+  gradedAt?: string;
   score?: number;
   totalMarks: number;
   preview: boolean;
@@ -81,7 +110,148 @@ function formatDate(value: string): string {
 }
 
 function totalMarks(test: ExamTest): number {
+  if (test.paperType === "written") {
+    return (test.writtenQuestions || []).reduce((sum, question) => sum + question.marks, 0);
+  }
   return test.questions.reduce((sum, question) => sum + question.marks, 0);
+}
+
+function questionCount(test: ExamTest): number {
+  return test.paperType === "written" ? (test.writtenQuestions || []).length : test.questions.length;
+}
+
+function parseExamDate(value: string): Date | null {
+  const trimmed = value.trim();
+  const numeric = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/.exec(trimmed);
+  if (numeric) {
+    const date = new Date(Number(numeric[3]), Number(numeric[2]) - 1, Number(numeric[1]));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parsePastedPaper(raw: string): ParsedPaper {
+  const header = (label: string) => new RegExp("^\\s*" + label + "\\s*[:=-]\\s*(.+)$", "im").exec(raw)?.[1]?.trim() || "";
+  const title = header("(?:Exam\\s*)?(?:Title|Name|Paper)");
+  const subject = header("Subject") || "Subject to confirm";
+  const className = header("(?:Class|Batch)") || "Class 10";
+  const dateText = header("(?:Exam\\s*)?Date");
+  const timeText = header("(?:Exam\\s*)?Time");
+  const date = dateText ? parseExamDate(dateText) : new Date(Date.now() + 60 * 60 * 1000);
+  const timeMatch = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec(timeText);
+  if (date && timeMatch) {
+    let hours = Number(timeMatch[1]) % 12;
+    if (timeMatch[3]?.toUpperCase() === "PM") hours += 12;
+    date.setHours(hours, Number(timeMatch[2]), 0, 0);
+  }
+  const startAt = date ? localDateTimeValue(date) : defaultStartTime();
+
+  const objectiveMarker = /(?:\[OBJECTIVE\]|\[MCQ\]|OBJECTIVE(?: QUESTIONS)?|MCQ(?: QUESTIONS)?|SECTION\s*A)/i;
+  const writtenMarker = /(?:\[WRITTEN\]|\[SUBJECTIVE\]|WRITTEN(?: QUESTIONS)?|SUBJECTIVE(?: QUESTIONS)?|DESCRIPTIVE(?: QUESTIONS)?|SECTION\s*B)/i;
+  const lines = raw.split(/\r?\n/);
+  const markerIndexA = lines.findIndex((line) => objectiveMarker.test(line.trim()));
+  const markerIndexB = lines.findIndex((line) => writtenMarker.test(line.trim()));
+  let objectiveLines: string[] = [];
+  let writtenLines: string[] = [];
+  if (markerIndexA >= 0 || markerIndexB >= 0) {
+    const ordered = [
+      ...(markerIndexA >= 0 ? [{ type: "objective" as const, index: markerIndexA }] : []),
+      ...(markerIndexB >= 0 ? [{ type: "written" as const, index: markerIndexB }] : [])
+    ].sort((a, b) => a.index - b.index);
+    ordered.forEach((section, index) => {
+      const end = ordered[index + 1]?.index ?? lines.length;
+      const block = lines.slice(section.index + 1, end);
+      if (section.type === "objective") objectiveLines = block;
+      else writtenLines = block;
+    });
+  } else {
+    objectiveLines = lines;
+  }
+
+  const questionStart = /^\s*(?:Q(?:uestion)?\s*)?(\d{1,3})[.)-]\s*(.+)$/i;
+  const optionStart = /^\s*([A-D])[).:-]\s*(.+)$/i;
+  const answerStart = /^\s*(?:Answer|Ans|Correct(?:\s*Answer)?)\s*[:=-]\s*([A-D])\b/i;
+  const objectiveDrafts: Array<{ number: number; prompt: string; options: string[]; answer: number }> = [];
+  const answerKey = new Map<number, number>();
+  let current: { number: number; prompt: string; options: string[]; answer: number } | null = null;
+  let answerKeyMode = false;
+  for (const line of objectiveLines) {
+    const clean = line.trim();
+    if (!clean) continue;
+    if (/^answer\s*key\s*[:=-]?$/i.test(clean)) { answerKeyMode = true; continue; }
+    if (answerKeyMode) {
+      for (const match of clean.matchAll(/(\d{1,3})\s*[-:.)]\s*([A-D])/gi)) answerKey.set(Number(match[1]), match[2].toUpperCase().charCodeAt(0) - 65);
+      continue;
+    }
+    const questionMatch = questionStart.exec(clean);
+    if (questionMatch) {
+      if (current) objectiveDrafts.push(current);
+      current = { number: Number(questionMatch[1]), prompt: questionMatch[2].trim(), options: [], answer: -1 };
+      continue;
+    }
+    const optionMatch = optionStart.exec(clean);
+    if (optionMatch && current) {
+      const letterIndex = optionMatch[1].toUpperCase().charCodeAt(0) - 65;
+      current.options[letterIndex] = optionMatch[2].trim();
+      continue;
+    }
+    const answerMatch = answerStart.exec(clean);
+    if (answerMatch && current) {
+      current.answer = answerMatch[1].toUpperCase().charCodeAt(0) - 65;
+      continue;
+    }
+    if (current && current.options.length === 0) current.prompt += " " + clean;
+  }
+  if (current) objectiveDrafts.push(current);
+  const objective = objectiveDrafts.map((question) => ({
+    id: makeId("mcq"),
+    prompt: question.prompt,
+    options: [0, 1, 2, 3].map((index) => question.options[index] || ""),
+    correctIndex: question.answer >= 0 ? question.answer : (answerKey.get(question.number) ?? -1),
+    marks: 2
+  }));
+
+  const written: WrittenQuestion[] = [];
+  let writtenCurrent: WrittenQuestion | null = null;
+  for (const line of writtenLines) {
+    const clean = line.trim();
+    if (!clean) continue;
+    const match = /^\s*(?:Q(?:uestion)?\s*)?(\d{1,3})[.)-]\s*(.+)$/i.exec(clean);
+    if (match) {
+      if (writtenCurrent) written.push(writtenCurrent);
+      const marksMatch = /(?:\(|\[)\s*(2|4|6)\s*(?:marks?|m)?\s*(?:\)|\])/i.exec(match[2]) || /\s[-–]\s*(2|4|6)\s*marks?\s*$/i.exec(match[2]);
+      const marks = marksMatch ? Number(marksMatch[1]) : 0;
+      const prompt = match[2].replace(/(?:\(|\[)\s*(2|4|6)\s*(?:marks?|m)?\s*(?:\)|\])/i, "").replace(/\s[-–]\s*(2|4|6)\s*marks?\s*$/i, "").trim();
+      writtenCurrent = { id: makeId("written"), prompt, marks };
+    } else if (writtenCurrent) {
+      writtenCurrent.prompt += " " + clean;
+    }
+  }
+  if (writtenCurrent) written.push(writtenCurrent);
+
+  const warnings: string[] = [];
+  if (!dateText) warnings.push("Exam Date header not found; default date is one hour from now.");
+  else if (!date) warnings.push("Exam Date could not be read. Use DD-MM-YYYY.");
+  if (!timeText) warnings.push("Exam Time header not found; default time is used.");
+  if (objective.length !== 50) warnings.push("Objective section has " + objective.length + " questions; exactly 50 are required for a 100-mark paper.");
+  if (objective.some((question) => question.options.some((option) => !option))) warnings.push("One or more objective questions are missing options.");
+  if (objective.some((question) => question.correctIndex < 0)) warnings.push("Some objective answers are missing from the answer key.");
+  const writtenTotal = written.reduce((sum, question) => sum + question.marks, 0);
+  if (written.length === 0) warnings.push("No written questions were detected.");
+  if (written.some((question) => question.marks !== 2 && question.marks !== 4 && question.marks !== 6)) warnings.push("Written questions must show marks as (2 marks), (4 marks) or (6 marks).");
+  if (writtenTotal !== 100) warnings.push("Written question marks currently total " + writtenTotal + "; they must total 100.");
+  return {
+    title: title || (subject === "Subject to confirm" ? "Imported Exam" : subject + " Exam"),
+    subject,
+    className,
+    startAt,
+    objectiveDuration: 60,
+    writtenDuration: 150,
+    objective,
+    written,
+    warnings
+  };
 }
 
 type Props = {
