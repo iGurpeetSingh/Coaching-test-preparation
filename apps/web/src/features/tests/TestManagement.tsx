@@ -264,7 +264,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   const [tests, setTests] = useState<ExamTest[]>(() => readStored<ExamTest>(TESTS_STORAGE_KEY));
   const [attempts, setAttempts] = useState<ExamAttempt[]>(() => readStored<ExamAttempt>(ATTEMPTS_STORAGE_KEY));
   const [filter, setFilter] = useState<FilterKey>("all");
-  const [view, setView] = useState<"list" | "create" | "details" | "exam" | "results">("list");
+  const [view, setView] = useState<"list" | "create" | "import" | "details" | "exam" | "results" | "grade" | "resultsCenter">("list");
   const [studentMode, setStudentMode] = useState(false);
   const [studentClass, setStudentClass] = useState("Class 10");
   const [selectedTestId, setSelectedTestId] = useState("");
@@ -275,6 +275,14 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [now, setNow] = useState(Date.now());
+  const [pasteText, setPasteText] = useState("");
+  const [parsedPaper, setParsedPaper] = useState<ParsedPaper | null>(null);
+  const [importError, setImportError] = useState("");
+  const [studentName, setStudentName] = useState("");
+  const [studentRoll, setStudentRoll] = useState("");
+  const [studentIdentityError, setStudentIdentityError] = useState("");
+  const [writtenAnswers, setWrittenAnswers] = useState<Record<string, string>>({});
+  const [gradingMarks, setGradingMarks] = useState<Record<string, number>>({});
 
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("Mathematics");
@@ -306,6 +314,13 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   const currentTest = selectedTest;
   const selectedAttempt = attempts.find((attempt) => attempt.id === selectedAttemptId);
   const currentAttempt = attempts.find((attempt) => attempt.id === currentAttemptId);
+  const activeWrittenQuestion = currentTest?.writtenQuestions?.[currentQuestion];
+  const examQuestionCount = currentTest ? questionCount(currentTest) : 0;
+  const examQuestionAnsweredCount = currentTest
+    ? currentTest.paperType === "written"
+      ? (currentTest.writtenQuestions || []).filter((question) => Boolean(writtenAnswers[question.id]?.trim())).length
+      : currentTest.questions.filter((question) => answers[question.id] !== undefined).length
+    : 0;
 
   const counts = useMemo(() => ({
     all: tests.length,
@@ -327,6 +342,49 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
     () => tests.filter((test) => test.isPublished && test.className === studentClass).sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()),
     [tests, studentClass]
   );
+
+  function handleParsePaper() {
+    const parsed = parsePastedPaper(pasteText);
+    if (!pasteText.trim()) { setImportError("Paste the full question paper first."); return; }
+    if (parsed.objective.length === 0 && parsed.written.length === 0) {
+      setParsedPaper(null);
+      setImportError("No questions were detected. Use [OBJECTIVE] and [WRITTEN] section headings and numbered questions.");
+      return;
+    }
+    setParsedPaper(parsed);
+    setImportError("");
+  }
+
+  function saveImportedPapers() {
+    if (!parsedPaper) return;
+    const groupId = makeId("exam");
+    const base = {
+      title: parsedPaper.title,
+      subject: parsedPaper.subject,
+      className: parsedPaper.className,
+      startAt: new Date(parsedPaper.startAt).toISOString(),
+      instructions: "Read the instructions carefully. Do not refresh or close the exam while attempting.",
+      isPublished: false,
+      examGroupId: groupId,
+      createdAt: new Date().toISOString()
+    };
+    const imported: ExamTest[] = [];
+    if (parsedPaper.objective.length > 0) imported.push({
+      ...base, id: makeId("objective"), paperType: "objective",
+      title: base.title + " — Objective", durationMinutes: parsedPaper.objectiveDuration,
+      questions: parsedPaper.objective
+    });
+    if (parsedPaper.written.length > 0) imported.push({
+      ...base, id: makeId("written"), paperType: "written",
+      title: base.title + " — Written", durationMinutes: parsedPaper.writtenDuration,
+      questions: [], writtenQuestions: parsedPaper.written
+    });
+    setTests((current) => [...imported, ...current]);
+    setPasteText("");
+    setParsedPaper(null);
+    setSelectedTestId(imported[0]?.id || "");
+    setView("list");
+  }
 
   function resetForm() {
     setEditingId("");
@@ -428,12 +486,21 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   }
 
   function startExam(test: ExamTest, preview = false, resume?: ExamAttempt) {
-    if (!preview && statusFor(test) !== "live") return;
+    if (!preview && statusFor(test, now) !== "live") return;
+    if (!preview && (!studentName.trim() || !studentRoll.trim())) {
+      setStudentIdentityError("Enter your name and roll number before starting the exam.");
+      setStudentMode(true);
+      setView("list");
+      return;
+    }
     const attempt = resume || {
       id: makeId("attempt"),
       testId: test.id,
       startedAt: new Date().toISOString(),
       answers: {},
+      writtenAnswers: {},
+      studentName: preview ? "Teacher Preview" : studentName.trim(),
+      rollNumber: preview ? "PREVIEW" : studentRoll.trim(),
       totalMarks: totalMarks(test),
       preview
     };
@@ -442,6 +509,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
     setCurrentAttemptId(attempt.id);
     setSelectedAttemptId(attempt.id);
     setAnswers(attempt.answers || {});
+    setWrittenAnswers(attempt.writtenAnswers || {});
     setCurrentQuestion(0);
     const elapsed = resume ? Math.floor((Date.now() - new Date(resume.startedAt).getTime()) / 1000) : 0;
     setRemainingSeconds(Math.max(0, test.durationMinutes * 60 - elapsed));
@@ -456,17 +524,42 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
       : attempt));
   }
 
+  function saveWrittenAnswer(questionId: string, value: string) {
+    const nextAnswers = { ...writtenAnswers, [questionId]: value };
+    setWrittenAnswers(nextAnswers);
+    setAttempts((current) => current.map((attempt) => attempt.id === currentAttemptId && !attempt.submittedAt
+      ? { ...attempt, writtenAnswers: nextAnswers }
+      : attempt));
+  }
+
   function finishAttempt() {
     if (!currentTest || !currentAttemptId) return;
     const existing = attempts.find((attempt) => attempt.id === currentAttemptId);
     if (existing?.submittedAt) { setSelectedAttemptId(existing.id); setView("results"); return; }
-    const score = currentTest.questions.reduce((sum, question) => (
+    const isWritten = currentTest.paperType === "written";
+    const score = isWritten ? undefined : currentTest.questions.reduce((sum, question) => (
       sum + (answers[question.id] === question.correctIndex ? question.marks : 0)
     ), 0);
     setAttempts((current) => current.map((attempt) => attempt.id === currentAttemptId
-      ? { ...attempt, answers, score, totalMarks: totalMarks(currentTest), submittedAt: new Date().toISOString() }
+      ? { ...attempt, answers, writtenAnswers, ...(score === undefined ? {} : { score }), totalMarks: totalMarks(currentTest), submittedAt: new Date().toISOString() }
       : attempt));
     setSelectedAttemptId(currentAttemptId);
+    setView("results");
+  }
+
+  function saveWrittenGrade(attempt: ExamAttempt, test: ExamTest) {
+    const items = test.writtenQuestions || [];
+    const hasInvalid = items.some((question) => {
+      const mark = gradingMarks[question.id];
+      return mark === undefined || !Number.isFinite(mark) || mark < 0 || mark > question.marks;
+    });
+    if (hasInvalid) { setFormError("Enter a valid mark for every written question, within its maximum marks."); return; }
+    const score = items.reduce((sum, question) => sum + (gradingMarks[question.id] || 0), 0);
+    setAttempts((current) => current.map((item) => item.id === attempt.id
+      ? { ...item, manualMarks: gradingMarks, score, totalMarks: totalMarks(test), gradedAt: new Date().toISOString() }
+      : item));
+    setSelectedAttemptId(attempt.id);
+    setFormError("");
     setView("results");
   }
 
@@ -481,7 +574,6 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   }, [remainingSeconds, view]);
 
   const activeQuestion = currentTest?.questions[currentQuestion];
-  const answeredCount = currentTest ? currentTest.questions.filter((question) => answers[question.id] !== undefined).length : 0;
 
   if (view === "create") {
     return (
