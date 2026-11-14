@@ -95,7 +95,8 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   const [attempts, setAttempts] = useState<ExamAttempt[]>(() => readStored<ExamAttempt>(ATTEMPTS_STORAGE_KEY));
   const [filter, setFilter] = useState<FilterKey>("all");
   const [view, setView] = useState<"list" | "create" | "details" | "exam" | "results">("list");
-  const [studentMode, setStudentMode] = useState(false);\n  const [studentClass, setStudentClass] = useState("Class 10");
+  const [studentMode, setStudentMode] = useState(false);
+  const [studentClass, setStudentClass] = useState("Class 10");
   const [selectedTestId, setSelectedTestId] = useState("");
   const [editingId, setEditingId] = useState("");
   const [selectedAttemptId, setSelectedAttemptId] = useState("");
