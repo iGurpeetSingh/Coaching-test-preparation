@@ -264,13 +264,14 @@ type Props = {
   onBack: () => void;
   onOpenPaperBuilder: () => void;
   searchQuery?: string;
+  showResultsInitially?: boolean;
 };
 
-export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery = "" }: Props) {
+export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery = "", showResultsInitially = false }: Props) {
   const [tests, setTests] = useState<ExamTest[]>(() => readStored<ExamTest>(TESTS_STORAGE_KEY));
   const [attempts, setAttempts] = useState<ExamAttempt[]>(() => readStored<ExamAttempt>(ATTEMPTS_STORAGE_KEY));
   const [filter, setFilter] = useState<FilterKey>("all");
-  const [view, setView] = useState<"list" | "create" | "import" | "details" | "exam" | "results" | "grade" | "resultsCenter">("list");
+  const [view, setView] = useState<"list" | "create" | "import" | "details" | "exam" | "results" | "grade" | "resultsCenter">(showResultsInitially ? "resultsCenter" : "list");
   const [studentMode, setStudentMode] = useState(false);
   const [studentClass, setStudentClass] = useState("Class 10");
   const [selectedTestId, setSelectedTestId] = useState("");
