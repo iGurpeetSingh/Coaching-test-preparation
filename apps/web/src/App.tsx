@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import PaperBuilder from "./features/papers/PaperBuilder";
 import TestManagement from "./features/tests/TestManagement";
 import StudentExamLibrary from "./features/tests/StudentExamLibrary";
 
@@ -28,8 +27,6 @@ const upcomingTests = [
 function App() {
   const [active, setActive] = useState("Dashboard");
   const [query, setQuery] = useState("");
-  const [showCreate, setShowCreate] = useState(false);
-  const [builderMode, setBuilderMode] = useState<"automatic" | "manual">("automatic");
   const filteredTests = useMemo(
     () => upcomingTests.filter((test) => test.name.toLowerCase().includes(query.toLowerCase())),
     [query]
@@ -85,15 +82,13 @@ function App() {
               <h1>{active === "Dashboard" ? "Good morning, Admin 👋" : active}</h1>
               <p>{active === "Dashboard" ? "Here’s what’s happening at your institute today." : "Manage " + active.toLowerCase() + " for your institute."}</p>
             </div>
-            <button className="primary-button" onClick={() => setActive("Tests & Exams")}><span>＋</span> Create Test</button>
+            <button className="primary-button" onClick={() => setActive("Tests & Exams")}>View Exams →</button>
           </div>}
 
           {active === "Tests & Exams" ? (
             <StudentExamLibrary searchQuery={query} />
           ) : active === "Results" ? (
             <TestManagement onBack={() => setActive("Dashboard")} onOpenPaperBuilder={() => setActive("Paper Builder")} searchQuery={query} showResultsInitially />
-          ) : active === "Paper Builder" ? (
-            <PaperBuilder key={builderMode} initialMode={builderMode} onBack={() => setActive("Dashboard")} />
           ) : active !== "Dashboard" && active !== "Tests & Exams" ? (
             <div className="placeholder-panel">
               <div className="placeholder-icon">✦</div>
@@ -112,7 +107,7 @@ function App() {
 
               <div className="section-heading"><div><h2>Quick actions</h2><p>Common tasks for your institute</p></div></div>
               <div className="quick-grid">
-                <button className="quick-card quick-purple" onClick={() => setActive("Tests & Exams")}><span>＋</span><strong>Create a test</strong><small>Build a paper or online exam</small></button>
+                <button className="quick-card quick-purple" onClick={() => setActive("Tests & Exams")}><span>＋</span><strong>View exams</strong><small>Check published Objective and Written papers</small></button>
                 <button className="quick-card quick-blue" onClick={() => setActive("Paper")}><span>◈</span><strong>View papers</strong><small>Open the exam paper library</small></button>
                 <button className="quick-card quick-green" onClick={() => setActive("Batches")}><span>▦</span><strong>Manage batches</strong><small>Organise classes and students</small></button>
                 <button className="quick-card quick-orange" onClick={() => setActive("Reports")}><span>▥</span><strong>View reports</strong><small>Track academic performance</small></button>
@@ -144,19 +139,7 @@ function App() {
         </section>
       </main>
 
-      {showCreate && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowCreate(false); }}>
-        <section className="create-modal" role="dialog" aria-modal="true" aria-labelledby="create-title">
-          <button className="modal-close" onClick={() => setShowCreate(false)} aria-label="Close">×</button>
-          <div className="modal-kicker">ASSESSMENT WORKFLOW</div><h2 id="create-title">Create a new test</h2><p>Choose how you want to prepare the assessment.</p>
-          <button className="choice-row" onClick={() => { setBuilderMode("manual"); setShowCreate(false); setActive("Paper Builder"); }}>
-            <span className="choice-icon">✎</span><span><strong>Build paper manually</strong><small>Select approved questions and arrange sections.</small></span><b>→</b>
-          </button>
-          <button className="choice-row" onClick={() => { setBuilderMode("automatic"); setShowCreate(false); setActive("Paper Builder"); }}>
-            <span className="choice-icon">✦</span><span><strong>Generate from blueprint</strong><small>Set topics, difficulty, marks and question count.</small></span><b>→</b>
-          </button>
-          <div className="modal-note">Next build step: connect these flows to the versioned Question Bank and Paper Generator.</div>
-        </section>
-      </div>}
+
     </div>
   );
 }
