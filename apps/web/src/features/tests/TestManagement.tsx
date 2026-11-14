@@ -714,13 +714,13 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
       <div className="tm-module">
         <div className="tm-page-head">
           <button className="tm-back" onClick={() => setView("list")}>← All tests</button>
-          <div><span className="tm-eyebrow">TEST OVERVIEW</span><h1>{selectedTest.title}</h1><p>{selectedTest.className} · {selectedTest.subject} · {selectedTest.questions.length} questions</p></div>
+          <div><span className="tm-eyebrow">TEST OVERVIEW</span><h1>{selectedTest.title}</h1><p>{selectedTest.className} · {selectedTest.subject} · {selectedTest.paperType === "written" ? "Written paper" : "Objective paper"} · {questionCount(selectedTest)} questions</p></div>
           <span className={"tm-status tm-status-" + status}>{statusLabel(status)}</span>
         </div>
         <div className="tm-detail-stats">
           <div><span>Duration</span><strong>{selectedTest.durationMinutes} min</strong></div>
           <div><span>Total marks</span><strong>{totalMarks(selectedTest)}</strong></div>
-          <div><span>Questions</span><strong>{selectedTest.questions.length}</strong></div>
+          <div><span>Questions</span><strong>{questionCount(selectedTest)}</strong></div>
           <div><span>Attempts</span><strong>{testAttempts.length}</strong></div>
         </div>
         <section className="tm-panel tm-detail-panel">
@@ -729,11 +729,12 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
           <div className="tm-instructions"><strong>Instructions for students</strong><p>{selectedTest.instructions || "No additional instructions."}</p></div>
         </section>
         <section className="tm-panel tm-question-paper-panel">
-          <div className="tm-panel-title"><div><h2>Question paper</h2><p>Teacher preview includes the answer key. Printed student copies hide the correct answers.</p></div><div className="tm-paper-actions"><button className="tm-button tm-button-outline" disabled={selectedTest.questions.length === 0} onClick={() => window.print()}>Print question paper</button><button className="tm-button tm-button-soft" disabled={selectedTest.questions.length === 0} title={selectedTest.questions.length === 0 ? "Add at least one question before previewing." : "Open a timed student preview"} onClick={() => startExam(selectedTest, true)}>Preview as student ↗</button></div></div>
-          <div className="tm-paper-print-header"><h1>{selectedTest.title}</h1><p>{selectedTest.className} · {selectedTest.subject} · {selectedTest.durationMinutes} minutes · Maximum marks: {totalMarks(selectedTest)}</p><div>Student name: ____________________________________  Roll no.: __________________</div><strong>Instructions</strong><p>{selectedTest.instructions || "Read every question carefully and select one correct option."}</p></div>
-          <div className="tm-paper-questions">{selectedTest.questions.map((question, index) => (
-            <article key={question.id}><div><strong>Q{index + 1}. {question.prompt}</strong><span>{question.marks} marks</span></div><div className="tm-paper-options">{question.options.map((option, optionIndex) => <span className={optionIndex === question.correctIndex ? "tm-correct-option" : ""} key={optionIndex}>{String.fromCharCode(65 + optionIndex)}. {option}</span>)}</div></article>
-          ))}</div>
+          <div className="tm-panel-title"><div><h2>{selectedTest.paperType === "written" ? "Written question paper" : "Objective question paper"}</h2><p>{selectedTest.paperType === "written" ? "Descriptive answer paper. Teachers review and award marks after submission." : "Teacher preview includes the answer key. Printed student copies hide correct answers."}</p></div><div className="tm-paper-actions"><button className="tm-button tm-button-outline" disabled={questionCount(selectedTest) === 0} onClick={() => window.print()}>Print question paper</button><button className="tm-button tm-button-soft" disabled={questionCount(selectedTest) === 0} title={questionCount(selectedTest) === 0 ? "Add questions before previewing." : "Open timed student preview"} onClick={() => startExam(selectedTest, true)}>Preview as student ↗</button></div></div>
+          <div className="tm-paper-print-header"><h1>{selectedTest.title}</h1><p>{selectedTest.className} · {selectedTest.subject} · {formatDate(selectedTest.startAt)} · {selectedTest.durationMinutes} minutes · Maximum marks: {totalMarks(selectedTest)}</p><div>Student name: ____________________________________  Roll no.: __________________</div><strong>Instructions</strong><p>{selectedTest.instructions || "Read every question carefully."}</p></div>
+          <div className="tm-paper-questions">{selectedTest.paperType === "written"
+            ? (selectedTest.writtenQuestions || []).map((question, index) => <article key={question.id}><div><strong>Q{index + 1}. {question.prompt}</strong><span>{question.marks} marks</span></div><div className="tm-written-answer-lines">{question.marks === 2 ? "Answer in 1–2 lines." : question.marks === 4 ? "Answer in 3–4 lines." : "Write a detailed answer."}</div></article>)
+            : selectedTest.questions.map((question, index) => <article key={question.id}><div><strong>Q{index + 1}. {question.prompt}</strong><span>{question.marks} marks</span></div><div className="tm-paper-options">{question.options.map((option, optionIndex) => <span className={optionIndex === question.correctIndex ? "tm-correct-option" : ""} key={optionIndex}>{String.fromCharCode(65 + optionIndex)}. {option}</span>)}</div></article>)}
+          </div>
         </section>
         <section className="tm-panel tm-attempt-panel">
           <div className="tm-panel-title"><div><h2>Student submissions & results</h2><p>Track started attempts and open submitted scorecards.</p></div><span>{testAttempts.filter((attempt) => attempt.submittedAt).length} submitted</span></div>
@@ -742,25 +743,26 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
               const submitted = Boolean(attempt.submittedAt);
               const percent = attempt.totalMarks ? Math.round(((attempt.score || 0) / attempt.totalMarks) * 100) : 0;
               return <div className="tm-attempt-row" key={attempt.id}>
-                <div><strong>{attempt.preview ? "Teacher preview" : "Student attempt"}</strong><small>Started {formatDate(attempt.startedAt)}{attempt.submittedAt ? " · Submitted " + formatDate(attempt.submittedAt) : " · In progress"}</small></div>
-                <span className={"tm-status tm-status-" + (submitted ? "completed" : "live")}>{submitted ? "Submitted" : "In progress"}</span>
-                <strong className="tm-attempt-score">{submitted ? (attempt.score || 0) + "/" + attempt.totalMarks + " · " + percent + "%" : "—"}</strong>
-                <button className="tm-table-action" disabled={!submitted} onClick={() => { setSelectedAttemptId(attempt.id); setView("results"); }}>View result →</button>
+                <div><strong>{attempt.studentName || (attempt.preview ? "Teacher preview" : "Student attempt")} {attempt.rollNumber ? "· " + attempt.rollNumber : ""}</strong><small>Started {formatDate(attempt.startedAt)}{attempt.submittedAt ? " · Submitted " + formatDate(attempt.submittedAt) : " · In progress"}</small></div>
+                <span className={"tm-status tm-status-" + (submitted ? (selectedTest.paperType === "written" && !attempt.gradedAt ? "upcoming" : "completed") : "live")}>{!submitted ? "In progress" : selectedTest.paperType === "written" && !attempt.gradedAt ? "Needs marking" : "Evaluated"}</span>
+                <strong className="tm-attempt-score">{!submitted ? "—" : selectedTest.paperType === "written" && !attempt.gradedAt ? "Pending" : (attempt.score || 0) + "/" + attempt.totalMarks + " · " + percent + "%"}</strong>
+                {submitted && selectedTest.paperType === "written" && !attempt.gradedAt
+                  ? <button className="tm-table-action" onClick={() => { setSelectedAttemptId(attempt.id); setGradingMarks(attempt.manualMarks || {}); setView("grade"); }}>Review & grade →</button>
+                  : <button className="tm-table-action" disabled={!submitted} onClick={() => { setSelectedAttemptId(attempt.id); setView("results"); }}>View result →</button>}
               </div>;
             })}</div>
           )}
         </section>
         <div className="tm-detail-actions">
-          {status === "draft" && <><button className="tm-button tm-button-outline" onClick={() => beginCreate(selectedTest)}>Edit draft</button><button className="tm-button tm-button-primary" onClick={() => {
-            const parsed = new Date(selectedTest.startAt).getTime();
-            if (!Number.isFinite(parsed) || parsed <= Date.now()) { setTests((current) => current.map((item) => item.id === selectedTest.id ? { ...item, startAt: new Date(Date.now() + 60000).toISOString(), isPublished: true } : item)); }
-            else setTests((current) => current.map((item) => item.id === selectedTest.id ? { ...item, isPublished: true } : item));
-          }}>Publish test →</button></>}
-          {status === "upcoming" && <button className="tm-button tm-button-primary" onClick={() => publishNow(selectedTest)}>Launch test now →</button>}
+          {!selectedTest.isPublished && selectedTest.paperType !== "objective" && selectedTest.paperType !== "written" && <button className="tm-button tm-button-outline" onClick={() => beginCreate(selectedTest)}>Edit draft</button>}
+          {!selectedTest.isPublished && <button className="tm-button tm-button-primary" onClick={() => publishTest(selectedTest)}>Publish {selectedTest.paperType === "written" ? "Written" : selectedTest.paperType === "objective" ? "Objective" : ""} Exam →</button>}
+          {selectedTest.isPublished && <button className="tm-button tm-button-danger" onClick={() => unpublishTest(selectedTest)}>Turn OFF / Unpublish this paper</button>}
+          {status === "upcoming" && selectedTest.isPublished && <button className="tm-button tm-button-primary" onClick={() => publishNow(selectedTest)}>Launch now →</button>}
           {status === "live" && <button className="tm-button tm-button-primary" onClick={() => { setStudentMode(true); setView("list"); }}>Open student portal ↗</button>}
           <button className="tm-button tm-button-danger" onClick={() => deleteTest(selectedTest)}>Delete test</button>
         </div>
-        <p className="tm-storage-note">Saved in this browser. Student attempts and results on another device require a connected server and database.</p>
+        {formError && <div className="tm-error" role="alert">{formError}</div>}
+        <p className="tm-storage-note">Publishing and OFF controls apply independently to this paper. This preview stores records in this browser; multi-device student access needs the shared API/database deployment.</p>
       </div>
     );
   }
