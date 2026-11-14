@@ -179,7 +179,7 @@ function parsePastedPaper(raw: string): ParsedPaper {
   for (const line of objectiveLines) {
     const clean = line.trim();
     if (!clean) continue;
-    if (/^answer\s*key\s*[:=-]?$/i.test(clean)) { answerKeyMode = true; continue; }
+    if (/^answer\s*key\s*[:=-]?/i.test(clean)) { answerKeyMode = true; const inlineKey = clean.replace(/^answer\s*key\s*[:=-]?/i, ""); for (const match of inlineKey.matchAll(/(\d{1,3})\s*[-:.)]\s*([A-D])/gi)) answerKey.set(Number(match[1]), match[2].toUpperCase().charCodeAt(0) - 65); continue; }
     if (answerKeyMode) {
       for (const match of clean.matchAll(/(\d{1,3})\s*[-:.)]\s*([A-D])/gi)) answerKey.set(Number(match[1]), match[2].toUpperCase().charCodeAt(0) - 65);
       continue;
@@ -875,7 +875,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
             return <tr key={key}><td><strong>{row.name}</strong></td><td>{row.roll}</td><td>{row.objective === undefined ? "Pending" : row.objective}</td><td>{row.written === undefined ? "Pending" : row.written}</td><td><strong>{complete ? total + "/200" : "—"}</strong></td><td><span className={"tm-status tm-status-" + (complete ? "completed" : "upcoming")}>{complete ? Math.round(total / 2) + "% Complete" : "Awaiting both papers"}</span></td></tr>;
           })}{combined.size === 0 && <tr><td colSpan={6} className="tm-table-empty">Combined scores appear when a student has attempted both papers in the same exam group.</td></tr>}</tbody></table></div>
         </section>
-        <div className="tm-detail-actions"><button className="tm-button tm-button-outline" onClick={() => window.print()}>Print results summary</button><button className="tm-button tm-button-primary" onClick={() => { const rows = [["Student","Roll","Objective","Written","Total"], ...Array.from(combined.values()).map((row) => [row.name,row.roll,String(row.objective ?? ""),String(row.written ?? ""),typeof row.objective === "number" && typeof row.written === "number" ? String(row.objective + row.written) : ""])]; const csv = rows.map((row) => row.map((cell) => '"' + cell.replace(/"/g, '""') + '"').join(",")).join("\\n"); const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = "exam-results.csv"; link.click(); URL.revokeObjectURL(url); }}>Export combined CSV ↓</button></div>
+        <div className="tm-detail-actions"><button className="tm-button tm-button-outline" onClick={() => window.print()}>Print results summary</button><button className="tm-button tm-button-primary" onClick={() => { const rows = [["Student","Roll","Objective","Written","Total"], ...Array.from(combined.values()).map((row) => [row.name,row.roll,String(row.objective ?? ""),String(row.written ?? ""),typeof row.objective === "number" && typeof row.written === "number" ? String(row.objective + row.written) : ""])]; const csv = rows.map((row) => row.map((cell) => '"' + cell.replace(/"/g, '""') + '"').join(",")).join("\n"); const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = "exam-results.csv"; link.click(); URL.revokeObjectURL(url); }}>Export combined CSV ↓</button></div>
       </div>
     );
   }
