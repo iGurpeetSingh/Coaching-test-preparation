@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import PaperBuilder from "./features/papers/PaperBuilder";
+import TestManagement from "./features/tests/TestManagement";
 
 const workspaceLinks = [
   ["Dashboard", "⌂"],
@@ -77,16 +78,18 @@ function App() {
         </header>
 
         <section className="page-content">
-          <div className="page-heading">
+          {active !== "Tests & Exams" && <div className="page-heading">
             <div>
               <div className="eyebrow">INSTITUTE WORKSPACE</div>
               <h1>{active === "Dashboard" ? "Good morning, Admin 👋" : active}</h1>
               <p>{active === "Dashboard" ? "Here’s what’s happening at your institute today." : "Manage " + active.toLowerCase() + " for your institute."}</p>
             </div>
             <button className="primary-button" onClick={() => setShowCreate(true)}><span>＋</span> Create Test</button>
-          </div>
+          </div>}
 
-          {active === "Paper Builder" ? (
+          {active === "Tests & Exams" ? (
+            <TestManagement onBack={() => setActive("Dashboard")} onOpenPaperBuilder={() => setActive("Paper Builder")} searchQuery={query} />
+          ) : active === "Paper Builder" ? (
             <PaperBuilder key={builderMode} initialMode={builderMode} onBack={() => setActive("Dashboard")} />
           ) : active !== "Dashboard" && active !== "Tests & Exams" ? (
             <div className="placeholder-panel">
