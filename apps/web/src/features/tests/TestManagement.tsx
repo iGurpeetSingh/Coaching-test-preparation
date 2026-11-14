@@ -767,7 +767,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
     );
   }
 
-  if (view === "exam" && currentTest && activeQuestion) {
+  if (view === "exam" && currentTest && (activeQuestion || activeWrittenQuestion)) {
     const minutes = Math.floor(remainingSeconds / 60).toString().padStart(2, "0");
     const seconds = (remainingSeconds % 60).toString().padStart(2, "0");
     return (
@@ -775,18 +775,25 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
         <div className="tm-exam-top"><div><span className="tm-eyebrow">{currentAttempt?.preview ? "STUDENT PREVIEW" : "ONLINE EXAM"}</span><h1>{currentTest.title}</h1><p>{currentTest.className} · {currentTest.subject}</p></div><div className={"tm-timer" + (remainingSeconds < 300 ? " tm-timer-warning" : "")}><span>TIME LEFT</span><strong>{minutes}:{seconds}</strong></div></div>
         <div className="tm-exam-layout">
           <section className="tm-panel tm-exam-question">
-            <div className="tm-question-number">QUESTION {currentQuestion + 1} OF {currentTest.questions.length}<span>{activeQuestion.marks} marks</span></div>
-            <h2>{activeQuestion.prompt}</h2>
-            <div className="tm-exam-options">{activeQuestion.options.map((option, index) => (
-              <button key={index} className={answers[activeQuestion.id] === index ? "tm-exam-option selected" : "tm-exam-option"} onClick={() => saveAnswer(activeQuestion.id, index)}>
-                <span>{String.fromCharCode(65 + index)}</span>{option}{answers[activeQuestion.id] === index && <b>✓</b>}
-              </button>
-            ))}</div>
-            <div className="tm-exam-nav"><button className="tm-button tm-button-outline" disabled={currentQuestion === 0} onClick={() => setCurrentQuestion((value) => Math.max(0, value - 1))}>← Previous</button><span>{answeredCount} of {currentTest.questions.length} answered</span><button className="tm-button tm-button-primary" onClick={() => setCurrentQuestion((value) => Math.min(currentTest.questions.length - 1, value + 1))}>{currentQuestion === currentTest.questions.length - 1 ? "Review answers" : "Next question →"}</button></div>
+            <div className="tm-question-number">QUESTION {currentQuestion + 1} OF {examQuestionCount}<span>{currentTest.paperType === "written" ? activeWrittenQuestion?.marks : activeQuestion?.marks} marks</span></div>
+            <h2>{currentTest.paperType === "written" ? activeWrittenQuestion?.prompt : activeQuestion?.prompt}</h2>
+            {currentTest.paperType === "written" && activeWrittenQuestion ? (
+              <div className="tm-written-response"><label>Write your answer<textarea rows={Math.max(5, activeWrittenQuestion.marks * 2)} value={writtenAnswers[activeWrittenQuestion.id] || ""} onChange={(event) => saveWrittenAnswer(activeWrittenQuestion.id, event.target.value)} placeholder="Type your answer here. Your response is saved automatically." /></label><small>{activeWrittenQuestion.marks} marks · Your answer will be reviewed by the teacher after submission.</small></div>
+            ) : activeQuestion ? (
+              <div className="tm-exam-options">{activeQuestion.options.map((option, index) => (
+                <button key={index} className={answers[activeQuestion.id] === index ? "tm-exam-option selected" : "tm-exam-option"} onClick={() => saveAnswer(activeQuestion.id, index)}>
+                  <span>{String.fromCharCode(65 + index)}</span>{option}{answers[activeQuestion.id] === index && <b>✓</b>}
+                </button>
+              ))}</div>
+            ) : null}
+            <div className="tm-exam-nav"><button className="tm-button tm-button-outline" disabled={currentQuestion === 0} onClick={() => setCurrentQuestion((value) => Math.max(0, value - 1))}>← Previous</button><span>{examQuestionAnsweredCount} of {examQuestionCount} answered</span><button className="tm-button tm-button-primary" onClick={() => setCurrentQuestion((value) => Math.min(examQuestionCount - 1, value + 1))}>{currentQuestion === examQuestionCount - 1 ? "Review answers" : "Next question →"}</button></div>
           </section>
-          <aside className="tm-panel tm-question-palette"><h3>Question palette</h3><p>Select a number to move to that question.</p><div>{currentTest.questions.map((question, index) => <button key={question.id} className={(currentQuestion === index ? "current " : "") + (answers[question.id] !== undefined ? "answered" : "")} onClick={() => setCurrentQuestion(index)}>{index + 1}</button>)}</div><div className="tm-palette-legend"><span><i className="answered-dot"/>Answered</span><span><i/>Not answered</span></div><button className="tm-button tm-button-primary tm-submit-exam" onClick={() => { if (window.confirm("Submit your test now? You cannot change answers after submission.")) finishAttempt(); }}>Submit test</button></aside>
+          <aside className="tm-panel tm-question-palette"><h3>Question palette</h3><p>Select a number to move to that question.</p><div>{(currentTest.paperType === "written" ? currentTest.writtenQuestions || [] : currentTest.questions).map((question, index) => {
+            const isAnswered = currentTest.paperType === "written" ? Boolean(writtenAnswers[question.id]?.trim()) : answers[question.id] !== undefined;
+            return <button key={question.id} className={(currentQuestion === index ? "current " : "") + (isAnswered ? "answered" : "")} onClick={() => setCurrentQuestion(index)}>{index + 1}</button>;
+          })}</div><div className="tm-palette-legend"><span><i className="answered-dot"/>Answered</span><span><i/>Not answered</span></div><button className="tm-button tm-button-primary tm-submit-exam" onClick={() => { if (window.confirm("Submit your test now? You cannot change answers after submission.")) finishAttempt(); }}>Submit test</button></aside>
         </div>
-        <p className="tm-storage-note">Answers are autosaved in this browser during the attempt. Do not close this tab until submission is complete.</p>
+        <p className="tm-storage-note">{currentTest.paperType === "written" ? "Written responses are autosaved in this browser. Submitted answers will enter the teacher evaluation queue." : "Answers are autosaved in this browser. Objective marks are calculated automatically on submission."} Do not close this tab until submission is complete.</p>
       </div>
     );
   }
