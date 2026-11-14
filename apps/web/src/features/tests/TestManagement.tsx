@@ -133,7 +133,7 @@ function parseExamDate(value: string): Date | null {
 
 function parsePastedPaper(raw: string): ParsedPaper {
   const header = (label: string) => new RegExp("^\\s*" + label + "\\s*[:=-]\\s*(.+)$", "im").exec(raw)?.[1]?.trim() || "";
-  const title = header("(?:Exam\\s*)?(?:Title|Name|Paper)");
+  const title = header("(?:Exam|(?:Exam\\s*)?(?:Title|Name|Paper))");
   const subject = header("Subject") || "Subject to confirm";
   const className = header("(?:Class|Batch)") || "Class 10";
   const dateText = header("(?:Exam\\s*)?Date");
@@ -141,8 +141,12 @@ function parsePastedPaper(raw: string): ParsedPaper {
   const date = dateText ? parseExamDate(dateText) : new Date(Date.now() + 60 * 60 * 1000);
   const timeMatch = /^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i.exec(timeText);
   if (date && timeMatch) {
-    let hours = Number(timeMatch[1]) % 12;
-    if (timeMatch[3]?.toUpperCase() === "PM") hours += 12;
+    const suffix = timeMatch[3]?.toUpperCase();
+    let hours = Number(timeMatch[1]);
+    if (suffix) {
+      hours %= 12;
+      if (suffix === "PM") hours += 12;
+    }
     date.setHours(hours, Number(timeMatch[2]), 0, 0);
   }
   const startAt = date ? localDateTimeValue(date) : defaultStartTime();
@@ -234,6 +238,8 @@ function parsePastedPaper(raw: string): ParsedPaper {
   if (!dateText) warnings.push("Exam Date header not found; default date is one hour from now.");
   else if (!date) warnings.push("Exam Date could not be read. Use DD-MM-YYYY.");
   if (!timeText) warnings.push("Exam Time header not found; default time is used.");
+  if (subject === "Subject to confirm") warnings.push("Subject header not found; choose the correct subject before publishing.");
+  if (!header("(?:Class|Batch)")) warnings.push("Class / Batch header not found; confirm the target class before publishing.");
   if (objective.length !== 50) warnings.push("Objective section has " + objective.length + " questions; exactly 50 are required for a 100-mark paper.");
   if (objective.some((question) => question.options.some((option) => !option))) warnings.push("One or more objective questions are missing options.");
   if (objective.some((question) => question.correctIndex < 0)) warnings.push("Some objective answers are missing from the answer key.");
@@ -246,8 +252,8 @@ function parsePastedPaper(raw: string): ParsedPaper {
     subject,
     className,
     startAt,
-    objectiveDuration: 60,
-    writtenDuration: 150,
+    objectiveDuration: Math.max(5, Number(header("Objective Duration")) || 60),
+    writtenDuration: Math.max(5, Number(header("Written Duration")) || 150),
     objective,
     written,
     warnings
