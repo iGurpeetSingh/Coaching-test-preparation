@@ -56,6 +56,8 @@ export default function StudentExamRunner({ paper, apiBaseUrl, onClose }: Props)
   const [questionIndex, setQuestionIndex] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [result, setResult] = useState<AttemptResult | null>(null);
+  const [checkingResult, setCheckingResult] = useState(false);
+  const [resultError, setResultError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const submitLock = useRef(false);
@@ -105,6 +107,32 @@ export default function StudentExamRunner({ paper, apiBaseUrl, onClose }: Props)
     }
   }, [apiBaseUrl, paper.paperType, studentName, rollNumber]);
 
+  const refreshWrittenResult = useCallback(async () => {
+    if (!attempt || paper.paperType !== "written") return;
+    setCheckingResult(true);
+    setResultError("");
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/api/exams/written/attempts/${attempt.attemptId}/result`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            "X-Exam-Receipt-Token": attempt.receiptToken,
+          },
+          cache: "no-store",
+        }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || "Could not refresh written result.");
+      setResult(data as AttemptResult);
+    } catch (cause) {
+      setResultError(cause instanceof Error ? cause.message : "Could not refresh result.");
+    } finally {
+      setCheckingResult(false);
+    }
+  }, [apiBaseUrl, attempt, paper.paperType]);
+
   const submitExam = useCallback(async () => {
     if (!attempt || submitLock.current || result) return;
     submitLock.current = true;
@@ -152,6 +180,7 @@ export default function StudentExamRunner({ paper, apiBaseUrl, onClose }: Props)
   const isObjective = paper.paperType === "objective";
 
   if (result) {
+    const isWritten = paper.paperType === "written";
     const isWrittenPending = result.status === "awaiting_marking";
     return (
       <section className="student-runner">
@@ -165,16 +194,21 @@ export default function StudentExamRunner({ paper, apiBaseUrl, onClose }: Props)
               <span className="student-runner-result-kicker">WRITTEN PAPER</span>
               <h2>Awaiting teacher evaluation</h2>
               <p>Your answers have been saved. The marks will be available after the teacher checks your answers.</p>
+              <button type="button" className="student-exam-open" disabled={checkingResult} onClick={() => void refreshWrittenResult()}>
+                {checkingResult ? "Checking result..." : "Refresh evaluation status"}
+              </button>
             </>
           ) : (
             <>
-              <span className="student-runner-result-kicker">OBJECTIVE PAPER RESULT</span>
+              <span className="student-runner-result-kicker">{isWritten ? "WRITTEN PAPER RESULT" : "OBJECTIVE PAPER RESULT"}</span>
               <h2>{result.score ?? 0} <small>/ {result.totalMarks} marks</small></h2>
-              <p>{result.correctCount ?? 0} correct · {result.incorrectCount ?? 0} incorrect · {result.unansweredCount ?? 0} unanswered</p>
+              {!isWritten && <p>{result.correctCount ?? 0} correct · {result.incorrectCount ?? 0} incorrect · {result.unansweredCount ?? 0} unanswered</p>}
+              {isWritten && <p>Your written answers have been checked and marks have been published.</p>}
             </>
           )}
           <p className="student-runner-receipt">Submission ID: {result.attemptId}</p>
         </div>
+        {resultError && <p className="student-exam-connection-note" role="alert">{resultError}</p>}
         <button className="student-exam-open" type="button" onClick={onClose}>Back to exams</button>
       </section>
     );
