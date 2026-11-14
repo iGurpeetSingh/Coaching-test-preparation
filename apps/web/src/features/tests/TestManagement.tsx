@@ -95,7 +95,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
   const [attempts, setAttempts] = useState<ExamAttempt[]>(() => readStored<ExamAttempt>(ATTEMPTS_STORAGE_KEY));
   const [filter, setFilter] = useState<FilterKey>("all");
   const [view, setView] = useState<"list" | "create" | "details" | "exam" | "results">("list");
-  const [studentMode, setStudentMode] = useState(false);
+  const [studentMode, setStudentMode] = useState(false);\n  const [studentClass, setStudentClass] = useState("Class 10");
   const [selectedTestId, setSelectedTestId] = useState("");
   const [editingId, setEditingId] = useState("");
   const [selectedAttemptId, setSelectedAttemptId] = useState("");
@@ -386,6 +386,21 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
             <article key={question.id}><div><strong>Q{index + 1}. {question.prompt}</strong><span>{question.marks} marks</span></div><div className="tm-paper-options">{question.options.map((option, optionIndex) => <span className={optionIndex === question.correctIndex ? "tm-correct-option" : ""} key={optionIndex}>{String.fromCharCode(65 + optionIndex)}. {option}</span>)}</div></article>
           ))}</div>
         </section>
+        <section className="tm-panel tm-attempt-panel">
+          <div className="tm-panel-title"><div><h2>Student submissions & results</h2><p>Track started attempts and open submitted scorecards.</p></div><span>${testAttempts.filter((attempt) => attempt.submittedAt).length} submitted</span></div>
+          {testAttempts.length === 0 ? <div className="tm-empty-small">No student attempts yet. Launch the test and students can start from the Student Portal preview.</div> : (
+            <div className="tm-attempt-list">{testAttempts.map((attempt) => {
+              const submitted = Boolean(attempt.submittedAt);
+              const percent = attempt.totalMarks ? Math.round(((attempt.score || 0) / attempt.totalMarks) * 100) : 0;
+              return <div className="tm-attempt-row" key={attempt.id}>
+                <div><strong>{attempt.preview ? "Teacher preview" : "Student attempt"}</strong><small>Started {formatDate(attempt.startedAt)}{attempt.submittedAt ? " · Submitted " + formatDate(attempt.submittedAt) : " · In progress"}</small></div>
+                <span className={"tm-status tm-status-" + (submitted ? "completed" : "live")}>{submitted ? "Submitted" : "In progress"}</span>
+                <strong className="tm-attempt-score">{submitted ? (attempt.score || 0) + "/" + attempt.totalMarks + " · " + percent + "%" : "—"}</strong>
+                <button className="tm-table-action" disabled={!submitted} onClick={() => { setSelectedAttemptId(attempt.id); setView("results"); }}>View result →</button>
+              </div>;
+            })}</div>
+          )}
+        </section>
         <div className="tm-detail-actions">
           {status === "draft" && <><button className="tm-button tm-button-outline" onClick={() => beginCreate(selectedTest)}>Edit draft</button><button className="tm-button tm-button-primary" onClick={() => {
             const parsed = new Date(selectedTest.startAt).getTime();
@@ -457,6 +472,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
       {studentMode ? (
         <>
           <div className="tm-student-banner"><div><strong>Student portal preview</strong><p>This preview uses the tests saved in this browser. A real student login and batch assignment will be connected through the backend phase.</p></div><span>STUDENT VIEW</span></div>
+          <div className="tm-student-class-filter"><label>My class / batch<select value={studentClass} onChange={(event) => setStudentClass(event.target.value)}><option>Class 9</option><option>Class 10</option><option>Class 11</option><option>Class 12</option><option>JEE Foundation</option><option>NEET Foundation</option></select></label><span>Only tests published for this class are shown.</span></div>
           <div className="tm-section-heading"><div><h2>Available assessments</h2><p>Only published tests are shown here.</p></div></div>
           {studentTests.length === 0 ? <div className="tm-empty-state"><div>▤</div><h3>No tests assigned yet</h3><p>When your teacher publishes a test, it will appear here.</p></div> : (
             <div className="tm-test-grid">{studentTests.map((test) => {
