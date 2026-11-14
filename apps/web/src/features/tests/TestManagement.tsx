@@ -471,9 +471,47 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
     setView("details");
   }
 
+  function publishValidation(test: ExamTest): string[] {
+    const problems: string[] = [];
+    if (test.paperType === "objective") {
+      if (test.questions.length !== 50) problems.push("Objective paper must contain exactly 50 MCQs.");
+      if (test.questions.some((question) => question.marks !== 2)) problems.push("Every objective question must be worth 2 marks.");
+      if (test.questions.some((question) => question.options.length !== 4 || question.options.some((option) => !option.trim()))) problems.push("Every MCQ must have four complete options.");
+      if (test.questions.some((question) => question.correctIndex < 0 || question.correctIndex > 3)) problems.push("Every MCQ must have a correct answer in the answer key.");
+      if (totalMarks(test) !== 100) problems.push("Objective paper total must be 100 marks.");
+    } else if (test.paperType === "written") {
+      const written = test.writtenQuestions || [];
+      if (written.length === 0) problems.push("Add written questions before publishing.");
+      if (written.some((question) => ![2, 4, 6].includes(question.marks))) problems.push("Written questions must be worth 2, 4 or 6 marks.");
+      if (totalMarks(test) !== 100) problems.push("Written paper total must be exactly 100 marks.");
+    } else if (test.questions.length === 0) {
+      problems.push("Add at least one question before publishing.");
+    }
+    return problems;
+  }
+
+  function publishTest(test: ExamTest) {
+    const problems = publishValidation(test);
+    if (problems.length) { setFormError(problems.join(" ")); return; }
+    const parsedStart = new Date(test.startAt).getTime();
+    if (!Number.isFinite(parsedStart)) { setFormError("Exam date and time are invalid. Edit the draft before publishing."); return; }
+    setTests((current) => current.map((item) => item.id === test.id ? { ...item, isPublished: true } : item));
+    setFormError("");
+    setSelectedTestId(test.id);
+  }
+
   function publishNow(test: ExamTest) {
+    const problems = publishValidation(test);
+    if (problems.length) { setFormError(problems.join(" ")); return; }
     const updated = { ...test, isPublished: true, startAt: new Date().toISOString() };
     setTests((current) => current.map((item) => item.id === test.id ? updated : item));
+    setFormError("");
+    setSelectedTestId(test.id);
+  }
+
+  function unpublishTest(test: ExamTest) {
+    setTests((current) => current.map((item) => item.id === test.id ? { ...item, isPublished: false } : item));
+    setFormError("");
     setSelectedTestId(test.id);
   }
 
