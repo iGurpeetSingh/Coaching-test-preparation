@@ -525,7 +525,7 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
 
   function startExam(test: ExamTest, preview = false, resume?: ExamAttempt) {
     if (!preview && statusFor(test, now) !== "live") return;
-    if (!preview && (!studentName.trim() || !studentRoll.trim())) {
+    if (!preview && !resume && (!studentName.trim() || !studentRoll.trim())) {
       setStudentIdentityError("Enter your name and roll number before starting the exam.");
       setStudentMode(true);
       setView("list");
@@ -907,8 +907,12 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
       <div className="tm-page-head">
         <div><span className="tm-eyebrow">{studentMode ? "STUDENT WORKSPACE" : "ASSESSMENT MANAGEMENT"}</span><h1>{studentMode ? "My Tests & Exams" : "Tests & Exams"}</h1><p>{studentMode ? "Open a live test, continue an attempt or review a scheduled assessment." : "Create question papers, schedule exams and monitor student submissions."}</p></div>
         <div className="tm-head-actions">
-          <button className="tm-button tm-button-outline" onClick={() => setStudentMode((value) => !value)}>{studentMode ? "↩ Teacher / Admin" : "◉ Student portal preview"}</button>
-          {!studentMode && <button className="tm-button tm-button-primary" onClick={() => beginCreate()}>＋ Create test</button>}
+          <button className="tm-button tm-button-outline" onClick={() => { setStudentMode((value) => !value); setView("list"); }}>{studentMode ? "↩ Teacher / Admin" : "◉ Student portal preview"}</button>
+          {!studentMode && <>
+            <button className="tm-button tm-button-outline" onClick={() => { setView("resultsCenter"); setFormError(""); }}>Results & Evaluation</button>
+            <button className="tm-button tm-button-soft" onClick={() => { setPasteText(""); setParsedPaper(null); setImportError(""); setView("import"); }}>Paste / Import Paper</button>
+            <button className="tm-button tm-button-primary" onClick={() => beginCreate()}>＋ Create test</button>
+          </>}
         </div>
       </div>
 
@@ -916,12 +920,14 @@ export default function TestManagement({ onBack, onOpenPaperBuilder, searchQuery
         <>
           <div className="tm-student-banner"><div><strong>Student portal preview</strong><p>This preview uses the tests saved in this browser. A real student login and batch assignment will be connected through the backend phase.</p></div><span>STUDENT VIEW</span></div>
           <div className="tm-student-class-filter"><label>My class / batch<select value={studentClass} onChange={(event) => setStudentClass(event.target.value)}><option>Class 9</option><option>Class 10</option><option>Class 11</option><option>Class 12</option><option>JEE Foundation</option><option>NEET Foundation</option></select></label><span>Only tests published for this class are shown.</span></div>
+          <div className="tm-student-identity"><label className="tm-field">Student name<input value={studentName} onChange={(event) => { setStudentName(event.target.value); setStudentIdentityError(""); }} placeholder="Enter your full name" /></label><label className="tm-field">Roll number<input value={studentRoll} onChange={(event) => { setStudentRoll(event.target.value); setStudentIdentityError(""); }} placeholder="Enter your roll number" /></label></div>
+          {studentIdentityError && <div className="tm-error" role="alert">{studentIdentityError}</div>}
           <div className="tm-section-heading"><div><h2>Available assessments</h2><p>Only published tests are shown here.</p></div></div>
           {studentTests.length === 0 ? <div className="tm-empty-state"><div>▤</div><h3>No tests assigned yet</h3><p>When your teacher publishes a test, it will appear here.</p></div> : (
             <div className="tm-test-grid">{studentTests.map((test) => {
               const status = statusFor(test);
               const unfinished = attempts.find((attempt) => attempt.testId === test.id && !attempt.submittedAt);
-              return <article className="tm-test-card" key={test.id}><div className="tm-test-card-top"><span className="tm-card-icon">▤</span><span className={"tm-status tm-status-" + status}>{statusLabel(status)}</span></div><h3>{test.title}</h3><p>{test.className} · {test.subject}</p><div className="tm-card-meta"><span>◷ {test.durationMinutes} min</span><span>▦ {test.questions.length} questions</span><span>◎ {totalMarks(test)} marks</span></div><div className="tm-card-footer"><span>{formatDate(test.startAt)}</span>{unfinished ? <button onClick={() => startExam(test, false, unfinished)}>Resume test →</button> : status === "live" ? <button onClick={() => startExam(test)}>Start test →</button> : <span className="tm-muted-action">{status === "upcoming" ? "Not started yet" : status === "completed" ? "Exam closed" : "Unavailable"}</span>}</div></article>;
+              return <article className="tm-test-card" key={test.id}><div className="tm-test-card-top"><span className="tm-card-icon">▤</span><span className={"tm-status tm-status-" + status}>{statusLabel(status)}</span></div><h3>{test.title}</h3><p>{test.className} · {test.subject} · {test.paperType === "written" ? "Written" : "Objective"}</p><div className="tm-card-meta"><span>◷ {test.durationMinutes} min</span><span>▦ {questionCount(test)} questions</span><span>◎ {totalMarks(test)} marks</span></div><div className="tm-card-footer"><span>{formatDate(test.startAt)}</span>{unfinished ? <button onClick={() => startExam(test, false, unfinished)}>Resume test →</button> : status === "live" ? <button onClick={() => startExam(test)}>Start test →</button> : <span className="tm-muted-action">{status === "upcoming" ? "Coming Soon" : status === "completed" ? "Exam closed" : "Unavailable"}</span>}</div></article>;
             })}</div>
           )}
           <div className="tm-section-heading"><div><h2>My submissions</h2><p>Submitted tests and saved progress in this browser.</p></div></div>
