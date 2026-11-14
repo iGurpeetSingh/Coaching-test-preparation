@@ -1,0 +1,34 @@
+.student-exams-page{width:100%;color:#302942}
+.student-exams-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin:4px 0 16px}
+.student-exams-eyebrow{font-size:9px;font-weight:800;letter-spacing:1.1px;color:#8d7db2}
+.student-exams-heading h1{font:800 25px 'Segoe UI',Arial,sans-serif;color:#302942;margin:6px 0 4px}
+.student-exams-heading p{font-size:11px;color:#8e879c;margin:0}
+.student-exams-refresh{display:inline-flex;align-items:center;gap:8px;border:1px solid #e7e2ef;background:#fff;border-radius:8px;padding:10px 13px;color:#56467e;font-size:10px;font-weight:700;cursor:pointer}
+.student-exams-refresh:disabled{opacity:.55;cursor:wait}
+.student-exams-refresh span{font-size:17px;line-height:10px}
+.student-exams-sync{display:flex;align-items:center;gap:7px;color:#9992a4;font-size:9px;margin:0 0 15px}
+.student-exams-dot{width:7px;height:7px;border-radius:50%;background:#54a67f}
+.student-exams-dot.is-loading{background:#b58b47;animation:student-exams-pulse 1s infinite alternate}
+@keyframes student-exams-pulse{to{opacity:.35}}
+.student-exams-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.student-exam-card{min-width:0;background:#fff;border:1px solid #ebe8f1;border-radius:12px;padding:17px;box-shadow:0 3px 12px #241a4b05}
+.student-exam-card-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.student-exam-icon{width:35px;height:35px;display:grid;place-items:center;background:#f0eafb;color:#704ac1;border-radius:10px;font-size:17px}
+.student-exam-status{display:inline-flex;align-items:center;border-radius:30px;padding:6px 9px;background:#f4f0fb;color:#7657b5;font-size:8px;font-weight:800;white-space:nowrap}
+.student-exam-status.is-published{background:#eaf7ef;color:#25845c}
+.student-exam-card h2{font:750 15px 'Segoe UI',Arial,sans-serif;color:#39324d;margin:14px 0 4px;overflow-wrap:anywhere}
+.student-exam-description{font-size:10px;color:#9690a3;margin:0}
+.student-exam-meta{display:grid;gap:7px;border-top:1px solid #f0edf4;border-bottom:1px solid #f0edf4;padding:12px 0;margin:14px 0;color:#80788e;font-size:9px}
+.student-exam-instructions{font-size:9px;line-height:1.6;color:#6f687e;background:#faf9fc;border-radius:8px;padding:10px;margin:0 0 12px;white-space:pre-wrap}
+.student-exam-coming-note{font-size:9px;color:#9a93a5;line-height:1.5;padding:4px 0}
+.student-exam-open{width:100%;display:flex;align-items:center;justify-content:space-between;border:0;border-radius:8px;background:#6e4bc1;color:#fff;padding:11px 12px;font-size:10px;font-weight:750;cursor:pointer}
+.student-exam-open:hover{background:#5c3ca9}
+.student-exam-paper-content{border-top:1px solid #eeeaf4;margin-top:14px;padding-top:5px;display:grid;gap:0}
+.student-exam-question{padding:12px 0;border-bottom:1px solid #f0edf4}
+.student-exam-question>div{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.student-exam-question strong{font-size:10px;line-height:1.6;color:#413951;overflow-wrap:anywhere}
+.student-exam-question>div>span{flex:none;font-size:8px;color:#8e879c;white-space:nowrap}
+.student-exam-question ol{padding-left:23px;margin:9px 0 0;display:grid;gap:6px;color:#786f87;font-size:9px;line-height:1.5}
+.student-exam-empty,.student-exam-empty-state{font-size:10px;color:#9b94a5;padding:15px 0}
+.student-exam-connection-note{font-size:9px;color:#9b7b48;background:#fff9ed;border:1px solid #f2e7d1;border-radius:8px;padding:10px 12px;margin:14px 0 0}
+@media(max-width:760px){.student-exams-grid{grid-template-columns:1fr}.student-exams-heading{align-items:flex-start;flex-direction:column}.student-exams-refresh{align-self:flex-start}}
