@@ -84,7 +84,7 @@ function App() {
               <h1>{active === "Dashboard" ? "Good morning, Admin 👋" : active}</h1>
               <p>{active === "Dashboard" ? "Here’s what’s happening at your institute today." : "Manage " + active.toLowerCase() + " for your institute."}</p>
             </div>
-            <button className="primary-button" onClick={() => setShowCreate(true)}><span>＋</span> Create Test</button>
+            <button className="primary-button" onClick={() => setActive("Tests & Exams")}><span>＋</span> Create Test</button>
           </div>}
 
           {active === "Tests & Exams" ? (
@@ -109,7 +109,7 @@ function App() {
 
               <div className="section-heading"><div><h2>Quick actions</h2><p>Common tasks for your institute</p></div></div>
               <div className="quick-grid">
-                <button className="quick-card quick-purple" onClick={() => setShowCreate(true)}><span>＋</span><strong>Create a test</strong><small>Build a paper or online exam</small></button>
+                <button className="quick-card quick-purple" onClick={() => setActive("Tests & Exams")}><span>＋</span><strong>Create a test</strong><small>Build a paper or online exam</small></button>
                 <button className="quick-card quick-blue" onClick={() => setActive("Question Bank")}><span>◈</span><strong>Add questions</strong><small>Grow your question bank</small></button>
                 <button className="quick-card quick-green" onClick={() => setActive("Batches")}><span>▦</span><strong>Manage batches</strong><small>Organise classes and students</small></button>
                 <button className="quick-card quick-orange" onClick={() => setActive("Reports")}><span>▥</span><strong>View reports</strong><small>Track academic performance</small></button>
