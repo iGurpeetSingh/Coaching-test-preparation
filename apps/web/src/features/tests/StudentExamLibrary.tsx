@@ -1,31 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import StudentExamRunner, { type ExamPaper } from "./StudentExamRunner";
 import "./student-exams.css";
 
 type PaperType = "objective" | "written";
-
-type ObjectiveQuestion = {
-  prompt: string;
-  options: string[];
-  marks?: number;
-};
-
-type WrittenQuestion = {
-  prompt: string;
-  marks: number;
-};
-
-type PublishedPaper = {
-  paperType: PaperType;
-  title: string;
-  subject: string;
-  className: string;
-  startAt: string;
-  durationMinutes: number;
-  instructions?: string;
-  questions?: ObjectiveQuestion[];
-  writtenQuestions?: WrittenQuestion[];
-};
-
+type PublishedPaper = ExamPaper;
 type PublishedResponse = { items?: PublishedPaper[] };
 
 const API_BASE_URL = (import.meta.env.VITE_EXAMS_API_URL || "").trim().replace(/\/+$/, "");
@@ -65,9 +43,13 @@ function formatDate(value: string): string {
   });
 }
 
-function isAvailable(paper: PublishedPaper): boolean {
+function examState(paper: PublishedPaper | null): "coming" | "live" | "closed" {
+  if (!paper) return "coming";
   const start = new Date(paper.startAt).getTime();
-  return Number.isFinite(start) && Date.now() >= start;
+  if (!Number.isFinite(start)) return "coming";
+  if (Date.now() < start) return "coming";
+  const end = start + Math.max(1, paper.durationMinutes) * 60 * 1000;
+  return Date.now() < end ? "live" : "closed";
 }
 
 export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?: string }) {
@@ -75,13 +57,14 @@ export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?:
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
-  const [expanded, setExpanded] = useState<PaperType | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [activePaper, setActivePaper] = useState<PublishedPaper | null>(null);
+  const [, setClock] = useState(Date.now());
 
   const loadPapers = useCallback(async (manual = false) => {
     if (!API_BASE_URL) {
       setPapers([]);
-      setError("Exam service is not connected yet.");
+      setError("Exam service is not connected yet. The API URL must be configured by the site administrator.");
       setLoading(false);
       setRefreshing(false);
       return;
@@ -105,7 +88,6 @@ export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?:
       const data = (await response.json()) as PublishedResponse;
       setPapers(Array.isArray(data.items) ? data.items : []);
       setLastUpdated(new Date());
-      setExpanded(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not connect to the exam service.");
       setPapers([]);
@@ -118,6 +100,11 @@ export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?:
   useEffect(() => {
     void loadPapers();
   }, [loadPapers]);
+
+  useEffect(() => {
+    const clock = window.setInterval(() => setClock(Date.now()), 15000);
+    return () => window.clearInterval(clock);
+  }, []);
 
   const visibleCards = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -132,6 +119,19 @@ export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?:
         (paper?.className || "").toLowerCase().includes(query);
     });
   }, [papers, searchQuery]);
+
+  if (activePaper) {
+    return (
+      <StudentExamRunner
+        paper={activePaper}
+        apiBaseUrl={API_BASE_URL}
+        onClose={() => {
+          setActivePaper(null);
+          void loadPapers(true);
+        }}
+      />
+    );
+  }
 
   return (
     <section className="student-exams-page">
@@ -164,18 +164,18 @@ export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?:
       <div className="student-exams-grid">
         {visibleCards.map((card) => {
           const paper = card.paper;
-          const available = paper ? isAvailable(paper) : false;
-          const opened = expanded === card.type && available;
+          const state = examState(paper);
+          const status = state === "live" ? "Published" : state === "closed" ? "Exam Closed" : "Coming Soon";
 
           return (
             <article className="student-exam-card" key={card.type}>
               <div className="student-exam-card-top">
                 <span className="student-exam-icon" aria-hidden="true">{card.icon}</span>
-                <span className={available ? "student-exam-status is-published" : "student-exam-status"}>
-                  {available ? "Published" : "Coming Soon"}
+                <span className={state === "live" ? "student-exam-status is-published" : "student-exam-status"}>
+                  {status}
                 </span>
               </div>
-              <h2>{paper && available ? paper.title : card.title}</h2>
+              <h2>{paper ? paper.title : card.title}</h2>
               <p className="student-exam-description">{card.description}</p>
               <div className="student-exam-meta">
                 <span>{card.marks}</span>
@@ -188,50 +188,22 @@ export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?:
                   </>
                 )}
               </div>
-              {paper?.instructions && available && (
-                <p className="student-exam-instructions">{paper.instructions}</p>
-              )}
-              {available && paper ? (
+              {state === "live" && paper ? (
                 <button
                   type="button"
                   className="student-exam-open"
-                  onClick={() => setExpanded(opened ? null : card.type)}
+                  onClick={() => setActivePaper(paper)}
                 >
-                  {opened ? "Hide paper" : "View published paper"}
-                  <span aria-hidden="true">{opened ? "↑" : "→"}</span>
+                  Start Exam
+                  <span aria-hidden="true">→</span>
                 </button>
               ) : (
                 <div className="student-exam-coming-note">
-                  {paper ? `Available from ${formatDate(paper.startAt)}` : "This exam will appear here after it is published."}
-                </div>
-              )}
-
-              {opened && paper && (
-                <div className="student-exam-paper-content">
-                  {card.type === "objective" ? (
-                    (paper.questions || []).map((question, index) => (
-                      <div className="student-exam-question" key={index}>
-                        <div><strong>Q{index + 1}. {question.prompt}</strong><span>{question.marks ?? 2} marks</span></div>
-                        <ol type="A">
-                          {(question.options || []).map((option, optionIndex) => (
-                            <li key={optionIndex}>{option}</li>
-                          ))}
-                        </ol>
-                      </div>
-                    ))
-                  ) : (
-                    (paper.writtenQuestions || []).map((question, index) => (
-                      <div className="student-exam-question" key={index}>
-                        <div><strong>Q{index + 1}. {question.prompt}</strong><span>{question.marks} marks</span></div>
-                      </div>
-                    ))
-                  )}
-                  {card.type === "objective" && !paper.questions?.length && (
-                    <p className="student-exam-empty">No objective questions were included in this paper.</p>
-                  )}
-                  {card.type === "written" && !paper.writtenQuestions?.length && (
-                    <p className="student-exam-empty">No written questions were included in this paper.</p>
-                  )}
+                  {state === "closed" && paper
+                    ? "The scheduled exam window has ended."
+                    : paper
+                      ? `Available from ${formatDate(paper.startAt)}`
+                      : "This exam will appear here after it is published."}
                 </div>
               )}
             </article>
