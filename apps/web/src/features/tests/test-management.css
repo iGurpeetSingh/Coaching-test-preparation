@@ -243,3 +243,9 @@
 .tm-paper-questions .tm-written-answer-lines{min-height:70px}
 @media(max-width:760px){.tm-import-two{grid-template-columns:1fr}.tm-import-summary{grid-template-columns:1fr 1fr}.tm-import-summary article:first-child{grid-column:1/-1}.tm-student-identity{grid-template-columns:1fr}.tm-import-tools{align-items:flex-start;flex-direction:column}.tm-import-tools button{width:100%}}
 @media print{.tm-written-answer-lines{border-bottom:1px solid #777!important;min-height:60px;color:transparent!important}.tm-paper-print-header{break-after:avoid}}
+
+.tm-import-metadata{margin-bottom:13px}
+.tm-import-metadata-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.tm-import-metadata-grid .tm-field input{height:37px}
+@media(max-width:760px){.tm-import-metadata-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.tm-import-metadata-grid{grid-template-columns:1fr}}
