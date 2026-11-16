@@ -5,6 +5,7 @@ import PaperBuilder from "./features/papers/PaperBuilder";
 import AuthScreen from "./features/auth/AuthScreen";
 import DirectoryPage from "./features/management/DirectoryPage";
 import EnquiryPage from "./features/admissions/EnquiryPage";
+import AttendancePage from "./features/attendance/AttendancePage";
 import { apiRequest, bootstrapCsrf, getCurrentUser, signOut, type CurrentUserResponse } from "./lib/api";
 
 const workspaceLinks = [
@@ -13,6 +14,8 @@ const workspaceLinks = [
   ["Students", "♙"],
   ["Batches", "▦"],
   ["Courses", "▤"],
+  ["Attendance", "✓"],
+  ["Question Bank", "▧"],
   ["Paper", "◈"],
   ["Tests & Exams", "▣"],
   ["Results", "▥"]
@@ -158,6 +161,10 @@ function App() {
             <StudentExamLibrary searchQuery={query} />
           ) : active === "Paper" ? (
             <PaperBuilder onBack={() => setActive("Dashboard")} />
+          ) : active === "Attendance" ? (
+            <AttendancePage />
+          ) : active === "Question Bank" ? (
+            <div className="placeholder-panel"><h2>Question Bank</h2><p>Question authoring and syllabus tools are being connected to the new API module.</p></div>
           ) : active === "Enquiries" ? (
             <EnquiryPage branches={currentUser.branches} permissions={currentUser.permissions} />
           ) : active === "Students" || active === "Batches" || active === "Courses" ? (
