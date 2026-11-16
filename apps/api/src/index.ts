@@ -1,6 +1,9 @@
 import express, { type ErrorRequestHandler } from "express";
 import { admissionRouter } from "./admissions.js";
 import { academicRouter } from "./academics.js";
+import { attendanceRouter } from "./attendance.js";
+import { financeRouter } from "./finance.js";
+import { questionBankRouter } from "./question-bank.js";
 import { ApiError } from "./enquiry-service.js";
 import { enquiryRouter } from "./enquiries.js";
 import { followupRouter } from "./followups.js";
@@ -38,7 +41,7 @@ app.get("/api/v1", (_request, response) => {
     name: "Coaching & Test Preparation API",
     version: "v1",
     status: "foundation",
-    modules: ["auth", "enquiries", "admissions", "followups", "courses", "batches", "students"]
+    modules: ["auth", "enquiries", "admissions", "followups", "courses", "batches", "students", "attendance", "fees", "question-bank"]
   });
 });
 
@@ -48,6 +51,9 @@ app.use("/api/v1/auth", authRouter);
 // Business routers provide their own authentication, CSRF and permission middleware.
 app.use("/api/v1", enquiryRouter);
 app.use("/api/v1", academicRouter);
+app.use("/api/v1", attendanceRouter);
+app.use("/api/v1", financeRouter);
+app.use("/api/v1", questionBankRouter);
 app.use("/api/v1/admissions", admissionRouter);
 app.use("/api/v1/followups", followupRouter);
 
