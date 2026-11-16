@@ -112,6 +112,9 @@ function App() {
     Courses: "admissions.read",
     Attendance: "attendance.read",
     "Question Bank": "question_bank.read",
+    Paper: "question_bank.read",
+    "Tests & Exams": "question_bank.read",
+    Results: "question_bank.read",
     "Fee Management": "fees.read",
     Reports: "reports.read",
     Settings: "users.manage"
@@ -169,7 +172,7 @@ function App() {
               <h1>{active === "Dashboard" ? "Good morning, " + displayName + " 👋" : active}</h1>
               <p>{active === "Dashboard" ? "Here’s what’s happening at your institute today." : "Manage " + active.toLowerCase() + " for your institute."}</p>
             </div>
-            <button className="primary-button" onClick={() => setActive("Tests & Exams")}>View Exams →</button>
+            {currentUser.permissions.includes("question_bank.read") && <button className="primary-button" onClick={() => setActive("Tests & Exams")}>View Exams →</button>}
           </div>}
 
           {active === "Tests & Exams" ? (
@@ -210,10 +213,12 @@ function App() {
 
               <div className="section-heading"><div><h2>Quick actions</h2><p>Common tasks for your institute</p></div></div>
               <div className="quick-grid">
-                <button className="quick-card quick-purple" onClick={() => setActive("Enquiries")}><span>＋</span><strong>New enquiry</strong><small>Capture and follow prospective students</small></button>
-                <button className="quick-card quick-blue" onClick={() => setActive("Students")}><span>♙</span><strong>View students</strong><small>Search admitted student records</small></button>
-                <button className="quick-card quick-green" onClick={() => setActive("Courses")}><span>▤</span><strong>Manage courses</strong><small>Set course names and standard fees</small></button>
-                <button className="quick-card quick-orange" onClick={() => setActive("Batches")}><span>▦</span><strong>Manage batches</strong><small>Organise branch groups and seat capacity</small></button>
+                {currentUser.permissions.includes("enquiries.create") && <button className="quick-card quick-purple" onClick={() => setActive("Enquiries")}><span>＋</span><strong>New enquiry</strong><small>Capture and follow prospective students</small></button>}
+                {currentUser.permissions.includes("admissions.read") && <button className="quick-card quick-blue" onClick={() => setActive("Students")}><span>♙</span><strong>View students</strong><small>Search admitted student records</small></button>}
+                {currentUser.permissions.includes("courses.manage") && <button className="quick-card quick-green" onClick={() => setActive("Courses")}><span>▤</span><strong>Manage courses</strong><small>Set course names and standard fees</small></button>}
+                {currentUser.permissions.includes("courses.manage") && <button className="quick-card quick-orange" onClick={() => setActive("Batches")}><span>▦</span><strong>Manage batches</strong><small>Organise branch groups and seat capacity</small></button>}
+                {currentUser.permissions.includes("attendance.manage") && <button className="quick-card quick-blue" onClick={() => setActive("Attendance")}><span>✓</span><strong>Mark attendance</strong><small>Open a batch attendance register</small></button>}
+                {currentUser.permissions.includes("fees.manage") && <button className="quick-card quick-orange" onClick={() => setActive("Fee Management")}><span>₹</span><strong>Collect fees</strong><small>Create charges and post payments</small></button>}
               </div>
 
               <div className="section-heading tests-heading">
