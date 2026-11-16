@@ -1,5 +1,6 @@
 import express, { type ErrorRequestHandler } from "express";
 import { admissionRouter } from "./admissions.js";
+import { academicRouter } from "./academics.js";
 import { ApiError } from "./enquiry-service.js";
 import { enquiryRouter } from "./enquiries.js";
 import { followupRouter } from "./followups.js";
@@ -37,7 +38,7 @@ app.get("/api/v1", (_request, response) => {
     name: "Coaching & Test Preparation API",
     version: "v1",
     status: "foundation",
-    modules: ["auth", "enquiries", "admissions", "followups"]
+    modules: ["auth", "enquiries", "admissions", "followups", "courses", "batches", "students"]
   });
 });
 
@@ -46,6 +47,7 @@ app.use("/api/v1/auth", authRouter);
 
 // Business routers provide their own authentication, CSRF and permission middleware.
 app.use("/api/v1", enquiryRouter);
+app.use("/api/v1", academicRouter);
 app.use("/api/v1/admissions", admissionRouter);
 app.use("/api/v1/followups", followupRouter);
 
@@ -68,6 +70,18 @@ const errorHandler: ErrorRequestHandler = (error: unknown, _request, response, _
     response.status(400).json({
       error: { code: "INVALID_JSON", message: "The request body must contain valid JSON." }
     });
+    return;
+  }
+
+  const databaseCode = typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code: unknown }).code)
+    : "";
+  if (databaseCode === "23505") {
+    response.status(409).json({ error: { code: "DUPLICATE_RECORD", message: "A record with the same code or identifier already exists." } });
+    return;
+  }
+  if (["23503", "23514", "22P02"].includes(databaseCode)) {
+    response.status(400).json({ error: { code: "INVALID_RECORD", message: "The submitted data does not match the institute records or allowed values." } });
     return;
   }
 
