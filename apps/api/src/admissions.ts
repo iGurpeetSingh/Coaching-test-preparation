@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { sql } from "kysely";
-import { requireAuth, requireCsrf, requirePermission, assertBranch } from "./auth.js";
+import { requireAuth, requireCsrf, requirePermission } from "./auth.js";
 import { withTenant } from "./db.js";
-import { ApiError, actorOf, getEnquiry, assertEnquiryScope, addActivity, addAudit } from "./enquiry-service.js";
+import { ApiError, actorOf, getEnquiry, assertEnquiryScope, assertBranch, addActivity, addAudit } from "./enquiry-service.js";
 import { normalizePersonName, parsePositiveInteger, validateFee } from "./enquiry-domain.js";
 
 export const admissionRouter = Router();
