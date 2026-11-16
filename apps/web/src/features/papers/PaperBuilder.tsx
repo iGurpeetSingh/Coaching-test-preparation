@@ -400,10 +400,10 @@ export default function PaperBuilder({ onBack }: { onBack: () => void }) {
               <div><h2>Paper details</h2><p>Choose the exam type and set the schedule.</p></div><span className="section-number">01</span>
             </div>
             <div className="mode-switch">
-              <button type="button" className={paperType === "objective" ? "mode-option selected" : "mode-option"} onClick={() => { setPaperType("objective"); resetParsed(); }}>
+              <button type="button" className={paperType === "objective" ? "mode-option selected" : "mode-option"} onClick={() => { setPaperType("objective"); setEditingId(null); resetParsed(); }}>
                 Objective Exam · 50 × 2
               </button>
-              <button type="button" className={paperType === "written" ? "mode-option selected" : "mode-option"} onClick={() => { setPaperType("written"); resetParsed(); }}>
+              <button type="button" className={paperType === "written" ? "mode-option selected" : "mode-option"} onClick={() => { setPaperType("written"); setEditingId(null); resetParsed(); }}>
                 Written Exam · 100 marks
               </button>
             </div>
