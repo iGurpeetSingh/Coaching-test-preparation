@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { ApiClientError, signIn } from "../lib/api";
+import { ApiClientError, signIn } from "../../lib/api";
 import "./auth-screen.css";
 
 type Workspace = { name: string; slug: string };
