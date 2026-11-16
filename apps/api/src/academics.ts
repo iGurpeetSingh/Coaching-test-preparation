@@ -266,7 +266,7 @@ academicRouter.get("/students", requirePermission("admissions.read"), async (req
           SELECT DISTINCT ON (s.id)
             s.id, s.student_number, s.full_name, s.mobile, s.email,
             s.date_of_birth, s.guardian_name, s.guardian_mobile, s.created_at,
-            a.admission_number, a.admitted_at, a.branch_id, b.name AS branch_name,
+            a.id AS admission_id, a.admission_number, a.admitted_at, a.branch_id, b.name AS branch_name,
             c.name AS course_name, ba.name AS batch_name
           FROM students s
           JOIN admissions a ON a.tenant_id = s.tenant_id AND a.student_id = s.id
