@@ -39,7 +39,9 @@ const permissions = [
   "enquiries.assign", "enquiries.bulk", "enquiries.read_all",
   "followups.read", "followups.manage", "counsellors.manage", "sources.manage",
   "enquiries.settings", "reports.read", "admissions.convert", "admissions.read",
-  "branches.manage", "courses.manage", "users.manage"
+  "branches.manage", "courses.manage", "users.manage",
+  "attendance.read", "attendance.manage", "fees.read", "fees.manage",
+  "question_bank.read", "question_bank.manage"
 ];
 
 async function main() {
@@ -94,7 +96,11 @@ async function main() {
       ["owner", "Institute Owner"],
       ["branch_admin", "Branch Admin"],
       ["counsellor", "Admission Counsellor"],
-      ["front_desk", "Front Desk"]
+      ["front_desk", "Front Desk"],
+      ["academic_coordinator", "Academic Coordinator"],
+      ["teacher", "Teacher"],
+      ["accountant", "Accountant"],
+      ["exam_controller", "Exam Controller"]
     ] as const) {
       const role = await sql<{ id: string }>`
         INSERT INTO roles (tenant_id, key, name)
@@ -153,7 +159,11 @@ async function main() {
       owner: permissions,
       branch_admin: permissions.filter((key) => key !== "users.manage"),
       counsellor: ["enquiries.read", "enquiries.create", "enquiries.update", "followups.read", "followups.manage"],
-      front_desk: ["enquiries.read", "enquiries.create", "followups.read", "followups.manage"]
+      front_desk: ["enquiries.read", "enquiries.create", "followups.read", "followups.manage"],
+      academic_coordinator: ["admissions.read", "courses.manage", "attendance.read", "attendance.manage", "question_bank.read", "question_bank.manage", "reports.read"],
+      teacher: ["admissions.read", "attendance.read", "attendance.manage", "question_bank.read", "question_bank.manage"],
+      accountant: ["admissions.read", "fees.read", "fees.manage", "reports.read"],
+      exam_controller: ["admissions.read", "question_bank.read", "question_bank.manage", "reports.read"]
     };
     for (const [roleKey, keys] of Object.entries(rolePermissionMap)) {
       for (const permissionKey of keys) {
