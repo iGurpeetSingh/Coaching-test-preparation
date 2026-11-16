@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import TestManagement from "./features/tests/TestManagement";
-import StudentExamLibrary from "./features/tests/StudentExamLibrary";
-import PaperBuilder from "./features/papers/PaperBuilder";
+import ExamManagementPage from "./features/exams/ExamManagementPage";
+import StudentExamPage from "./features/exams/StudentExamPage";
+import ResultsPage from "./features/results/ResultsPage";
 import AuthScreen from "./features/auth/AuthScreen";
 import DirectoryPage from "./features/management/DirectoryPage";
 import EnquiryPage from "./features/admissions/EnquiryPage";
@@ -19,6 +19,7 @@ const workspaceLinks = [
   ["Attendance", "✓"],
   ["Question Bank", "▧"],
   ["Paper", "◈"],
+  ["My Exams", "▣"],
   ["Tests & Exams", "▣"],
   ["Results", "▥"]
 ] as const;
@@ -58,6 +59,11 @@ function App() {
 
   useEffect(() => {
     if (!currentUser) return;
+    if (currentUser.permissions.includes("student.exams.read") && !currentUser.permissions.includes("admissions.read")) {
+      setActive("My Exams");
+      setDashboardLoading(false);
+      return;
+    }
     let activeRequest = true;
     setDashboardLoading(true);
     Promise.allSettled([
@@ -112,9 +118,10 @@ function App() {
     Courses: "admissions.read",
     Attendance: "attendance.read",
     "Question Bank": "question_bank.read",
-    Paper: "question_bank.read",
-    "Tests & Exams": "question_bank.read",
-    Results: "question_bank.read",
+    Paper: "papers.read",
+    "Tests & Exams": "papers.read",
+    "My Exams": "student.exams.read",
+    Results: "results.read",
     "Fee Management": "fees.read",
     Reports: "reports.read",
     Settings: "users.manage"
@@ -166,7 +173,7 @@ function App() {
         </header>
 
         <section className="page-content">
-          {active !== "Tests & Exams" && active !== "Paper" && <div className="page-heading">
+          {!["Tests & Exams", "Paper", "My Exams", "Results"].includes(active) && <div className="page-heading">
             <div>
               <div className="eyebrow">INSTITUTE WORKSPACE</div>
               <h1>{active === "Dashboard" ? "Good morning, " + displayName + " 👋" : active}</h1>
@@ -175,10 +182,10 @@ function App() {
             {currentUser.permissions.includes("question_bank.read") && <button className="primary-button" onClick={() => setActive("Tests & Exams")}>View Exams →</button>}
           </div>}
 
-          {active === "Tests & Exams" ? (
-            <StudentExamLibrary searchQuery={query} />
-          ) : active === "Paper" ? (
-            <PaperBuilder onBack={() => setActive("Dashboard")} />
+          {active === "My Exams" ? (
+            <StudentExamPage />
+          ) : active === "Tests & Exams" || active === "Paper" ? (
+            <ExamManagementPage />
           ) : active === "Fee Management" ? (
             <FeeManagementPage permissions={currentUser.permissions} />
           ) : active === "Attendance" ? (
@@ -194,7 +201,7 @@ function App() {
               permissions={currentUser.permissions}
             />
           ) : active === "Results" ? (
-            <TestManagement onBack={() => setActive("Dashboard")} searchQuery={query} showResultsInitially />
+            <ResultsPage permissions={currentUser.permissions} />
           ) : active !== "Dashboard" && active !== "Tests & Exams" ? (
             <div className="placeholder-panel">
               <div className="placeholder-icon">✦</div>
