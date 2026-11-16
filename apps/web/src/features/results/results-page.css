@@ -1,0 +1,27 @@
+.results-page{display:grid;gap:18px;}
+.results-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.results-toolbar select{height:38px;border:1px solid #e3e5ed;border-radius:8px;padding:0 10px;background:#fff;color:#45475b;font:inherit;font-size:11px;}
+.results-toolbar span{color:#9294a4;font-size:10px;}
+.results-layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:15px;align-items:start;}
+.results-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 15px;border-bottom:1px solid #eff0f4;}
+.results-card-head strong{color:#303249;font-size:12px;}
+.results-card-head span{color:#9294a4;font-size:10px;}
+.result-row-selected{background:#f6f5ff;}
+.results-detail{min-width:0;}
+.results-student-meta{display:grid;gap:4px;padding:14px;border-bottom:1px solid #eff0f4;}
+.results-student-meta strong{color:#292b41;font-size:14px;}
+.results-student-meta span{color:#85879a;font-size:10px;}
+.results-student-meta b{color:#2e7b50;font-size:12px;}
+.results-question-list{display:grid;gap:0;max-height:700px;overflow:auto;}
+.result-question{display:grid;gap:9px;padding:14px;border-bottom:1px solid #eff0f4;}
+.result-question-title{display:grid;gap:5px;}
+.result-question-title strong{color:#303249;font-size:11px;line-height:1.5;}
+.result-question-title span{color:#9294a4;font-size:9px;}
+.result-answer-row{display:grid;gap:3px;padding:8px;border-radius:7px;background:#f8f8fb;}
+.result-answer-row b{color:#898b9b;font-size:9px;text-transform:uppercase;letter-spacing:.4px;}
+.result-answer-row span{color:#4f5165;font-size:10px;white-space:pre-wrap;overflow-wrap:anywhere;}
+.result-grade-fields{display:grid;gap:8px;}
+.result-grade-fields label{display:grid;gap:5px;color:#54566b;font-size:10px;font-weight:700;}
+.result-grade-fields input,.result-grade-fields textarea{width:100%;box-sizing:border-box;border:1px solid #e3e5ed;border-radius:7px;padding:8px;color:#303247;font:inherit;font-size:11px;}
+.results-submit{padding:13px;border-top:1px solid #eff0f4;}
+@media(max-width:1100px){.results-layout{grid-template-columns:1fr;}}
