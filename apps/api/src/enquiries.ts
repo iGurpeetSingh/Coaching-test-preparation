@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireCsrf, requirePermission } from "./auth.js";
+import { requireAuth, requireCsrf, requirePermission, assertBranch } from "./auth.js";
 import { withTenant } from "./db.js";
 import { actorOf } from "./enquiry-service.js";
 import { sql, type RawBuilder } from "kysely";
@@ -180,4 +180,86 @@ enquiryRouter.get("/enquiries", requirePermission("enquiries.read"), async (requ
     response.setHeader("Cache-Control", "no-store");
     response.json({ ...data, page, pageSize, pageCount: Math.ceil(data.total/pageSize) });
   } catch (error) { next(error); }
+});
+
+
+enquiryRouter.post("/enquiries", requirePermission("enquiries.create"), async (request, response, next) => {
+  try {
+    const auth = actorOf(request);
+    const name = inputText(request.body?.studentName, "Student name", 160, true)!;
+    const parent = inputText(request.body?.parentName, "Parent/guardian name", 160);
+    const mobile = inputText(request.body?.mobile, "Mobile", 32, true)!;
+    const alternate = inputText(request.body?.alternateMobile, "Alternate mobile", 32);
+    if (!validatePhone(mobile) || (alternate && !validatePhone(alternate))) throw new ApiError(400, "INVALID_PHONE", "Enter valid 10–15 digit mobile numbers.");
+    const phone = normalizePhone(mobile);
+    const alternatePhone = alternate ? normalizePhone(alternate) : null;
+    const email = inputText(request.body?.email, "Email", 254);
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, "INVALID_EMAIL", "Enter a valid email address.");
+    const branchId = inputUuid(request.body?.branchId, "Branch", true)!;
+    assertBranch(request, branchId);
+    const courseId = inputUuid(request.body?.courseId, "Course");
+    const sourceId = inputUuid(request.body?.sourceId, "Source");
+    const priority = inputText(request.body?.priority, "Priority", 16) || "normal";
+    if (!["low","normal","high","urgent"].includes(priority)) throw new ApiError(400, "INVALID_PRIORITY", "Priority is invalid.");
+    const mode = inputText(request.body?.interestedMode, "Mode", 16);
+    if (mode && !["offline","online","hybrid"].includes(mode)) throw new ApiError(400, "INVALID_MODE", "Mode is invalid.");
+    const customFields = request.body?.customFields && typeof request.body.customFields === "object" && !Array.isArray(request.body.customFields) ? request.body.customFields : {};
+    if (Object.keys(customFields).length > 20) throw new ApiError(400, "CUSTOM_FIELDS_LIMIT", "At most 20 custom fields are allowed.");
+
+    const result = await withTenant(auth.tenantId, async (trx) => {
+      await assertReference(trx, auth.tenantId, "branches", branchId, "Branch");
+      await assertReference(trx, auth.tenantId, "courses", courseId, "Course");
+      await assertReference(trx, auth.tenantId, "enquiry_sources", sourceId, "Source");
+      const duplicates = await sql<any>`
+        SELECT id,enquiry_number,student_name,mobile,status_key,created_at
+        FROM enquiries WHERE tenant_id=${auth.tenantId} AND archived_at IS NULL
+          AND (mobile_normalized=${phone} OR (
+            ${alternatePhone}::text IS NOT NULL AND mobile_normalized=${alternatePhone}
+            AND lower(regexp_replace(student_name,'\\s+',' ','g'))=${normalizePersonName(name)}
+          ))
+        ORDER BY created_at DESC LIMIT 5
+      `.execute(trx);
+      const branch = await sql<{branch_code:string}>`SELECT branch_code FROM branches WHERE tenant_id=${auth.tenantId} AND id=${branchId}`.execute(trx);
+      const period = new Date().toISOString().slice(0,7).replace("-","");
+      const sequence = await nextSequence(trx,"enquiry_id_sequences",auth.tenantId,branchId,period);
+      const number = `ENQ-${branch.rows[0].branch_code}-${period}-${String(sequence).padStart(5,"0")}`;
+      const inserted = await sql<any>`
+        INSERT INTO enquiries (
+          tenant_id,branch_id,enquiry_number,student_name,parent_name,mobile,mobile_normalized,
+          alternate_mobile,alternate_mobile_normalized,email,current_class,school_name,course_id,source_id,
+          status_key,priority,interested_mode,preferred_contact_time,expected_joining_date,remarks,
+          custom_fields,created_by_membership_id,updated_by_membership_id
+        ) VALUES (
+          ${auth.tenantId},${branchId},${number},${name},${parent},${mobile},${phone},
+          ${alternate},${alternatePhone},${email},${inputText(request.body?.currentClass,"Current class",80)},
+          ${inputText(request.body?.schoolName,"School",180)},${courseId},${sourceId},'new',${priority},${mode},
+          ${inputText(request.body?.preferredContactTime,"Preferred contact time",100)},
+          ${inputDate(request.body?.expectedJoiningDate,"Expected joining date")},
+          ${inputText(request.body?.remarks,"Remarks",3000)},${JSON.stringify(customFields)}::jsonb,
+          ${auth.membershipId},${auth.membershipId}
+        ) RETURNING *
+      `.execute(trx);
+      let enquiry = inserted.rows[0];
+      await addActivity(trx,auth.tenantId,enquiry.id,auth.membershipId,"created","Enquiry created",enquiry.remarks,{enquiryNumber:number,duplicateMatches:duplicates.rows.length});
+      await addAudit(trx,auth.tenantId,auth.membershipId,"enquiry.created","enquiry",enquiry.id,request.ip||null,{enquiryNumber:number,branchId,sourceId});
+      const settings = await sql<{auto_assign_on_create:boolean}>`SELECT auto_assign_on_create FROM tenant_enquiry_settings WHERE tenant_id=${auth.tenantId}`.execute(trx);
+      if (settings.rows[0]?.auto_assign_on_create) {
+        try {
+          const counsellorId = await chooseRoundRobinCounsellor(trx,request,enquiry);
+          await assignEnquiry(trx,request,enquiry,counsellorId,"round_robin");
+          enquiry = await getEnquiry(trx,auth.tenantId,enquiry.id);
+        } catch(error) {
+          if (!(error instanceof ApiError && error.code === "NO_ACTIVE_COUNSELLOR")) throw error;
+        }
+      }
+      return { enquiry, duplicates: duplicates.rows };
+    });
+    response.status(201).json({
+      enquiry: result.enquiry,
+      duplicateWarnings: result.duplicates.map((row:any)=>({
+        id:row.id,enquiryNumber:row.enquiry_number,studentName:row.student_name,
+        mobile:row.mobile,status:row.status_key,createdAt:row.created_at
+      }))
+    });
+  } catch(error) { next(error); }
 });
