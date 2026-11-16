@@ -94,10 +94,10 @@ export function getLatestDemoPaper(paperType: PaperType): DemoPaper | null {
 }
 
 export function getPublishedDemoPapers(): DemoPaper[] {
-  const latestByType = (["objective", "written"] as const)
-    .map((type) => getLatestDemoPaper(type))
-    .filter((paper): paper is DemoPaper => Boolean(paper && paper.published));
-  return latestByType;
+  const all = getDemoPapers();
+  return (["objective", "written"] as const)
+    .map((type) => all.find((paper) => paper.paperType === type && paper.published) || null)
+    .filter((paper): paper is DemoPaper => Boolean(paper));
 }
 
 export function saveDemoPaper(input: Omit<DemoPaper, "createdAt" | "updatedAt"> & { createdAt?: string }): DemoPaper {
@@ -109,7 +109,12 @@ export function saveDemoPaper(input: Omit<DemoPaper, "createdAt" | "updatedAt"> 
     createdAt: input.createdAt || existing?.createdAt || now,
     updatedAt: now,
   };
-  const next = rows.filter((paper) => paper.id !== saved.id);
+  let next = rows.filter((paper) => paper.id !== saved.id);
+  if (saved.published) {
+    next = next.map((paper) => paper.paperType === saved.paperType
+      ? { ...paper, published: false }
+      : paper);
+  }
   next.push(saved);
   writeArray(PAPER_STORAGE_KEY, next);
   notifyStore();
@@ -126,6 +131,13 @@ export function setDemoPaperPublished(paperId: string, published: boolean): Demo
     publishedAt: published ? new Date().toISOString() : rows[index].publishedAt,
     updatedAt: new Date().toISOString(),
   };
+  if (published) {
+    rows.forEach((paper, rowIndex) => {
+      if (rowIndex !== index && paper.paperType === updated.paperType) {
+        rows[rowIndex] = { ...paper, published: false };
+      }
+    });
+  }
   rows[index] = updated;
   writeArray(PAPER_STORAGE_KEY, rows);
   notifyStore();
