@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import TestManagement from "./features/tests/TestManagement";
 import StudentExamLibrary from "./features/tests/StudentExamLibrary";
+import PaperBuilder from "./features/papers/PaperBuilder";
 
 const workspaceLinks = [
   ["Dashboard", "⌂"],
@@ -76,7 +77,7 @@ function App() {
         </header>
 
         <section className="page-content">
-          {active !== "Tests & Exams" && <div className="page-heading">
+          {active !== "Tests & Exams" && active !== "Paper" && <div className="page-heading">
             <div>
               <div className="eyebrow">INSTITUTE WORKSPACE</div>
               <h1>{active === "Dashboard" ? "Good morning, Admin 👋" : active}</h1>
@@ -87,6 +88,8 @@ function App() {
 
           {active === "Tests & Exams" ? (
             <StudentExamLibrary searchQuery={query} />
+          ) : active === "Paper" ? (
+            <PaperBuilder onBack={() => setActive("Dashboard")} />
           ) : active === "Results" ? (
             <TestManagement onBack={() => setActive("Dashboard")} searchQuery={query} showResultsInitially />
           ) : active !== "Dashboard" && active !== "Tests & Exams" ? (
