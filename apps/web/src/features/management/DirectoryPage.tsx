@@ -42,6 +42,7 @@ function formatDate(value: string | null): string {
 
 export default function DirectoryPage({ module, branches, permissions }: Props) {
   const canManageCourses = permissions.includes("courses.manage");
+  const canManageUsers = permissions.includes("users.manage");
   const [courses, setCourses] = useState<Course[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -51,6 +52,9 @@ export default function DirectoryPage({ module, branches, permissions }: Props) 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [portalStudent, setPortalStudent] = useState<Student | null>(null);
+  const [portalEmail, setPortalEmail] = useState("");
+  const [portalPassword, setPortalPassword] = useState("");
 
   const [courseCode, setCourseCode] = useState("");
   const [courseName, setCourseName] = useState("");
@@ -139,6 +143,22 @@ export default function DirectoryPage({ module, branches, permissions }: Props) 
       setBatchCode(""); setBatchName(""); setBatchStart(""); setBatchEnd(""); setBatchSeats("");
       setNotice("Batch created successfully.");
       await loadData();
+    } catch (cause) { setError(messageOf(cause)); }
+    finally { setSaving(false); }
+  }
+
+
+  async function createPortalAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!portalStudent) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const result = await apiRequest<{ portalAccount: { email: string; studentNumber: string } }>(
+        `/students/${portalStudent.id}/portal-account`,
+        { method: "POST", body: JSON.stringify({ email: portalEmail.trim(), password: portalPassword }) }
+      );
+      setNotice(`Student portal account created for ${result.portalAccount.studentNumber} (${result.portalAccount.email}). Share the password securely with the student.`);
+      setPortalStudent(null); setPortalEmail(""); setPortalPassword("");
     } catch (cause) { setError(messageOf(cause)); }
     finally { setSaving(false); }
   }
@@ -242,13 +262,28 @@ export default function DirectoryPage({ module, branches, permissions }: Props) 
               </table>{!batches.length && <div className="directory-empty">No batches created yet.</div>}</div>
             )}
             {module === "Students" && (
-              <div className="directory-table-scroll"><table><thead><tr><th>STUDENT</th><th>STUDENT ID</th><th>MOBILE</th><th>COURSE / BATCH</th><th>BRANCH</th><th>ADMITTED</th></tr></thead>
-                <tbody>{students.map((student) => <tr key={student.id}>
-                  <td><strong>{student.full_name}</strong><small>{student.email || student.guardian_name || " "}</small></td>
-                  <td>{student.student_number}</td><td>{student.mobile || "—"}</td><td>{student.course_name}<small>{student.batch_name || "No batch assigned"}</small></td>
-                  <td>{student.branch_name}</td><td>{formatDate(student.admitted_at)}</td>
-                </tr>)}</tbody>
-              </table>{!students.length && <div className="directory-empty">No admitted students found.</div>}</div>
+              <>
+                <div className="directory-table-scroll"><table><thead><tr><th>STUDENT</th><th>STUDENT ID</th><th>MOBILE</th><th>COURSE / BATCH</th><th>BRANCH</th><th>ADMITTED</th>{canManageUsers && <th>PORTAL</th>}</tr></thead>
+                  <tbody>{students.map((student) => <tr key={student.id}>
+                    <td><strong>{student.full_name}</strong><small>{student.email || student.guardian_name || " "}</small></td>
+                    <td>{student.student_number}</td><td>{student.mobile || "—"}</td><td>{student.course_name}<small>{student.batch_name || "No batch assigned"}</small></td>
+                    <td>{student.branch_name}</td><td>{formatDate(student.admitted_at)}</td>
+                    {canManageUsers && <td><button className="directory-row-action" onClick={() => { setPortalStudent(student); setPortalEmail(student.email || ""); setPortalPassword(""); }}>Create login</button></td>}
+                  </tr>)}</tbody>
+                </table>{!students.length && <div className="directory-empty">No admitted students found.</div>}</div>
+                {portalStudent && canManageUsers && <form className="directory-create-form" onSubmit={createPortalAccount}>
+                  <div className="directory-form-title"><strong>Create student portal account</strong><span>{portalStudent.full_name} · {portalStudent.student_number}. Use a unique login email and a temporary password of at least 12 characters.</span></div>
+                  <div className="directory-fields">
+                    <label>Student login email<input type="email" value={portalEmail} onChange={(event) => setPortalEmail(event.target.value)} required maxLength={254} /></label>
+                    <label>Temporary password<input type="password" value={portalPassword} onChange={(event) => setPortalPassword(event.target.value)} required minLength={12} maxLength={1024} autoComplete="new-password" /></label>
+                  </div>
+                  <div className="row" style={{display:"flex",gap:"10px"}}>
+                    <button className="directory-primary" type="submit" disabled={saving}>{saving ? "Creating…" : "Create portal account"}</button>
+                    <button className="secondary-button" type="button" onClick={() => setPortalStudent(null)}>Cancel</button>
+                  </div>
+                  <span className="directory-muted">The password is not returned by the server. Share it with the student through a secure channel.</span>
+                </form>}
+              </>
             )}
           </>
         )}
