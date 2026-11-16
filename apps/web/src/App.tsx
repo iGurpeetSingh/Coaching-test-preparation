@@ -6,6 +6,8 @@ import AuthScreen from "./features/auth/AuthScreen";
 import DirectoryPage from "./features/management/DirectoryPage";
 import EnquiryPage from "./features/admissions/EnquiryPage";
 import AttendancePage from "./features/attendance/AttendancePage";
+import FeeManagementPage from "./features/finance/FeeManagementPage";
+import QuestionBankPage from "./features/questions/QuestionBankPage";
 import { apiRequest, bootstrapCsrf, getCurrentUser, signOut, type CurrentUserResponse } from "./lib/api";
 
 const workspaceLinks = [
@@ -103,7 +105,20 @@ function App() {
   const displayName = currentUser.user.fullName || "Institute User";
   const initials = displayName.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
 
-  const renderNav = (items: ReadonlyArray<readonly [string, string]>) => items.map(([label, icon]) => (
+  const permissionByModule: Record<string, string> = {
+    Enquiries: "enquiries.read",
+    Students: "admissions.read",
+    Batches: "admissions.read",
+    Courses: "admissions.read",
+    Attendance: "attendance.read",
+    "Question Bank": "question_bank.read",
+    "Fee Management": "fees.read",
+    Reports: "reports.read",
+    Settings: "users.manage"
+  };
+  const renderNav = (items: ReadonlyArray<readonly [string, string]>) => items
+    .filter(([label]) => !permissionByModule[label] || currentUser.permissions.includes(permissionByModule[label]))
+    .map(([label, icon]) => (
     <button key={label} className={active === label ? "nav-item active" : "nav-item"} onClick={() => setActive(label)}>
       <span className="nav-icon">{icon}</span>{label}
 
@@ -161,10 +176,12 @@ function App() {
             <StudentExamLibrary searchQuery={query} />
           ) : active === "Paper" ? (
             <PaperBuilder onBack={() => setActive("Dashboard")} />
+          ) : active === "Fee Management" ? (
+            <FeeManagementPage permissions={currentUser.permissions} />
           ) : active === "Attendance" ? (
             <AttendancePage />
           ) : active === "Question Bank" ? (
-            <div className="placeholder-panel"><h2>Question Bank</h2><p>Question authoring and syllabus tools are being connected to the new API module.</p></div>
+            <QuestionBankPage />
           ) : active === "Enquiries" ? (
             <EnquiryPage branches={currentUser.branches} permissions={currentUser.permissions} />
           ) : active === "Students" || active === "Batches" || active === "Courses" ? (
