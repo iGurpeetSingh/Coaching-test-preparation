@@ -1,0 +1,16 @@
+.question-bank-page{display:grid;gap:18px;}
+.qb-panel{border:1px solid #e9eaf1;border-radius:13px;background:#fff;overflow:hidden;}
+.qb-panel-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 17px;border-bottom:1px solid #eff0f4;}
+.qb-panel-heading strong{color:#303249;font-size:13px;}
+.qb-panel-heading span{color:#9294a4;font-size:10px;}
+.qb-syllabus-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;padding:16px;}
+.qb-syllabus-grid form{display:grid;gap:9px;align-content:start;padding-right:14px;border-right:1px solid #f0f1f5;}
+.qb-syllabus-grid form:last-child{border-right:0;padding-right:0;}
+.qb-syllabus-grid label,.qb-options-grid label,.qb-inline-field,.qb-prompt-label{display:grid;gap:6px;color:#54566b;font-size:11px;font-weight:700;}
+.qb-syllabus-grid input,.qb-syllabus-grid select,.qb-options-grid input,.qb-options-grid select,.qb-inline-field select,.qb-prompt-label textarea{width:100%;min-width:0;box-sizing:border-box;border:1px solid #e3e5ed;border-radius:8px;padding:9px;background:#fff;color:#303247;font:inherit;font-size:12px;}
+.qb-syllabus-summary{padding:10px 17px;border-top:1px solid #f1f2f6;color:#9294a4;font-size:10px;}
+.qb-prompt-label textarea{resize:vertical;line-height:1.5;}
+.qb-options-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.qb-inline-field{max-width:240px;}
+@media(max-width:900px){.qb-syllabus-grid{grid-template-columns:1fr;}.qb-syllabus-grid form{border-right:0;border-bottom:1px solid #f0f1f5;padding:0 0 13px;}.qb-syllabus-grid form:last-child{border-bottom:0;padding-bottom:0;}}
+@media(max-width:600px){.qb-options-grid{grid-template-columns:1fr;}}
