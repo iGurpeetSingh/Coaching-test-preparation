@@ -75,7 +75,7 @@ function App() {
   }
 
   const displayName = currentUser.user.fullName || "Institute User";
-  const initials = displayName.split(/\\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
+  const initials = displayName.split(/\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
 
   const renderNav = (items: ReadonlyArray<readonly [string, string]>) => items.map(([label, icon]) => (
     <button key={label} className={active === label ? "nav-item active" : "nav-item"} onClick={() => setActive(label)}>
