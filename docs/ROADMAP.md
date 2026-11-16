@@ -28,7 +28,7 @@ Status updated: 16 November 2026. Checkmarks mean code or documentation exists i
 - [x] Course API: list, create, update and deactivate.
 - [x] Batch API: branch-scoped list, create, update and deactivate.
 - [x] Admitted-student directory API with search, pagination and branch scoping.
-- [ ] Connect login, dashboard, enquiry, student, course and batch screens to the API.
+- [x] Connect login, dashboard CRM metrics, enquiry, student, course and batch screens to the API.
 - [ ] Branch administration, academic years, faculty and guardian relationship management.
 - [ ] Timetable, attendance, corrections/approvals, homework and study material.
 - [ ] Fee plans, instalments, payment allocations, receipts, refunds, expenses and reconciliation.
