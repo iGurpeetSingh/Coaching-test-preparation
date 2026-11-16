@@ -149,7 +149,7 @@ function parseWritten(raw: string): WrittenQuestion[] {
     return {
       id: "wrt_" + String(index + 1).padStart(2, "0"),
       prompt: draft.prompt.trim(),
-      marks: draft.marks,
+      marks: draft.marks as 2 | 4 | 6,
     };
   });
 
