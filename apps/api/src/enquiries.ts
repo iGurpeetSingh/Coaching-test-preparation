@@ -26,9 +26,7 @@ enquiryRouter.get("/enquiries/summary", requirePermission("enquiries.read"), asy
 });
 
 
-import { sql, type RawBuilder } from "kysely";
-import { ApiError, getEnquiry, assertEnquiryScope, addActivity, addAudit, assignEnquiry, chooseRoundRobinCounsellor } from "./enquiry-service.js";
-import { canTransition, normalizePhone, validatePhone, normalizePersonName, parsePositiveInteger, validateFee } from "./enquiry-domain.js";
+
 
 function inputText(value: unknown, label: string, max = 250, required = false): string | null {
   if (value === undefined || value === null) {
