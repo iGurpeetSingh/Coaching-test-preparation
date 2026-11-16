@@ -32,6 +32,43 @@ CREATE TABLE IF NOT EXISTS memberships (
   UNIQUE (tenant_id, user_id)
 );
 
+-- Minimal pre-authentication directory: it contains no contact data and is used only
+-- to discover workspace membership after a valid email is supplied at login.
+CREATE TABLE IF NOT EXISTS login_membership_directory (
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  membership_id uuid NOT NULL,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  membership_status text NOT NULL,
+  PRIMARY KEY (tenant_id, membership_id)
+);
+CREATE INDEX IF NOT EXISTS login_membership_directory_user_idx
+  ON login_membership_directory(user_id, membership_status);
+
+CREATE OR REPLACE FUNCTION sync_login_membership_directory() RETURNS trigger
+LANGUAGE plpgsql AS $
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    DELETE FROM login_membership_directory
+    WHERE tenant_id = OLD.tenant_id AND membership_id = OLD.id;
+    RETURN OLD;
+  END IF;
+  INSERT INTO login_membership_directory (tenant_id, membership_id, user_id, membership_status)
+  VALUES (NEW.tenant_id, NEW.id, NEW.user_id, NEW.status)
+  ON CONFLICT (tenant_id, membership_id) DO UPDATE
+    SET user_id = EXCLUDED.user_id, membership_status = EXCLUDED.membership_status;
+  RETURN NEW;
+END $;
+
+DROP TRIGGER IF EXISTS memberships_login_directory_sync ON memberships;
+CREATE TRIGGER memberships_login_directory_sync
+AFTER INSERT OR UPDATE OF user_id, status OR DELETE ON memberships
+FOR EACH ROW EXECUTE FUNCTION sync_login_membership_directory();
+
+INSERT INTO login_membership_directory (tenant_id, membership_id, user_id, membership_status)
+SELECT tenant_id, id, user_id, status FROM memberships
+ON CONFLICT (tenant_id, membership_id) DO UPDATE
+SET user_id = EXCLUDED.user_id, membership_status = EXCLUDED.membership_status;
+
 CREATE TABLE IF NOT EXISTS branches (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
