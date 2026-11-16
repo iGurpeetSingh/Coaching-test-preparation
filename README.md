@@ -4,7 +4,7 @@ A coaching-institute platform combining institute administration, academic opera
 
 ## Current stage
 
-- Research baseline completed for the agreed desk-research scope.
+- Product research, competitor review, business workflows and functional requirements are documented.
 - Repository foundation is being initialized.
 - Application features will be implemented in small, testable modules.
 - Production launch remains gated by institute pilot validation, security review, load tests, backup-restore drills and legal/tax review.
@@ -29,15 +29,18 @@ A coaching-institute platform combining institute administration, academic opera
 - Responsive, keyboard-accessible UI with Hindi/English readiness.
 - No production capacity or compliance claim without evidence.
 
-## Documentation
+## Product and research documentation
 
-- `docs/RESEARCH-BASELINE.md`
-- `docs/SRS.md`
-- `docs/ARCHITECTURE.md`
-- `docs/DATA-MODEL.md`
-- `docs/QA-PLAN.md`
-- `docs/DECISIONS.md`
-- `docs/ROADMAP.md`
+- `docs/INDUSTRY-RESEARCH-AND-COMPETITOR-ANALYSIS.md` — market segments, eight-vendor public-source comparison, product positioning and priorities.
+- `docs/BUSINESS-WORKFLOWS.md` — end-to-end institute, academic, financial and assessment workflows.
+- `docs/FUNCTIONAL-REQUIREMENTS-AND-ACCEPTANCE.md` — role matrix, requirement IDs, priorities and acceptance criteria.
+- `docs/RESEARCH-BASELINE.md` — architecture, privacy, finance and operational research baseline.
+- `docs/SRS.md` — software requirements overview.
+- `docs/ARCHITECTURE.md` — technical architecture baseline.
+- `docs/DATA-MODEL.md` — logical data model.
+- `docs/QA-PLAN.md` — QA and release test plan.
+- `docs/DECISIONS.md` — architecture decision records.
+- `docs/ROADMAP.md` — implementation phases and release gates.
 
 ## Local development
 
