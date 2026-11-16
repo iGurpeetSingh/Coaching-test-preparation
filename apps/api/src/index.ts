@@ -4,6 +4,9 @@ import { academicRouter } from "./academics.js";
 import { attendanceRouter } from "./attendance.js";
 import { financeRouter } from "./finance.js";
 import { questionBankRouter } from "./question-bank.js";
+import { paperRouter } from "./papers.js";
+import { studentExamRouter } from "./student-exams.js";
+import { resultsRouter } from "./results.js";
 import { ApiError } from "./enquiry-service.js";
 import { enquiryRouter } from "./enquiries.js";
 import { followupRouter } from "./followups.js";
@@ -41,7 +44,7 @@ app.get("/api/v1", (_request, response) => {
     name: "Coaching & Test Preparation API",
     version: "v1",
     status: "foundation",
-    modules: ["auth", "enquiries", "admissions", "followups", "courses", "batches", "students", "attendance", "fees", "question-bank"]
+    modules: ["auth", "enquiries", "admissions", "followups", "courses", "batches", "students", "attendance", "fees", "question-bank", "papers", "student-exams", "results"]
   });
 });
 
@@ -54,6 +57,9 @@ app.use("/api/v1", academicRouter);
 app.use("/api/v1", attendanceRouter);
 app.use("/api/v1", financeRouter);
 app.use("/api/v1", questionBankRouter);
+app.use("/api/v1", paperRouter);
+app.use("/api/v1", studentExamRouter);
+app.use("/api/v1", resultsRouter);
 app.use("/api/v1/admissions", admissionRouter);
 app.use("/api/v1/followups", followupRouter);
 
