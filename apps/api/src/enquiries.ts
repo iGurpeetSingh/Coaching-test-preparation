@@ -263,3 +263,121 @@ enquiryRouter.post("/enquiries", requirePermission("enquiries.create"), async (r
     });
   } catch(error) { next(error); }
 });
+
+
+enquiryRouter.get("/enquiries/:id", requirePermission("enquiries.read"), async (request,response,next)=>{
+  try {
+    const auth=actorOf(request);
+    const data=await withTenant(auth.tenantId,async(trx)=>{
+      const enquiry=await getEnquiry(trx,auth.tenantId,request.params.id,request.query.archived==="true");
+      assertEnquiryScope(request,enquiry);
+      const details=await sql<any>`
+        SELECT e.*,b.name AS branch_name,c.name AS course_name,s.name AS source_name,u.full_name AS counsellor_name
+        FROM enquiries e JOIN branches b ON b.tenant_id=e.tenant_id AND b.id=e.branch_id
+        LEFT JOIN courses c ON c.tenant_id=e.tenant_id AND c.id=e.course_id
+        LEFT JOIN enquiry_sources s ON s.tenant_id=e.tenant_id AND s.id=e.source_id
+        LEFT JOIN memberships m ON m.tenant_id=e.tenant_id AND m.id=e.assigned_to_membership_id
+        LEFT JOIN users u ON u.id=m.user_id
+        WHERE e.tenant_id=${auth.tenantId} AND e.id=${enquiry.id}
+      `.execute(trx);
+      const activities=await sql<any>`
+        SELECT a.*,u.full_name AS actor_name FROM enquiry_activities a
+        JOIN memberships m ON m.tenant_id=a.tenant_id AND m.id=a.actor_membership_id
+        JOIN users u ON u.id=m.user_id
+        WHERE a.tenant_id=${auth.tenantId} AND a.enquiry_id=${enquiry.id}
+        ORDER BY a.created_at DESC LIMIT 100
+      `.execute(trx);
+      const assignmentHistory=await sql<any>`
+        SELECT a.*,from_u.full_name AS from_name,to_u.full_name AS to_name,actor_u.full_name AS assigned_by_name
+        FROM enquiry_assignments a
+        LEFT JOIN memberships from_m ON from_m.tenant_id=a.tenant_id AND from_m.id=a.from_membership_id
+        LEFT JOIN users from_u ON from_u.id=from_m.user_id
+        JOIN memberships to_m ON to_m.tenant_id=a.tenant_id AND to_m.id=a.to_membership_id
+        JOIN users to_u ON to_u.id=to_m.user_id
+        JOIN memberships actor_m ON actor_m.tenant_id=a.tenant_id AND actor_m.id=a.assigned_by_membership_id
+        JOIN users actor_u ON actor_u.id=actor_m.user_id
+        WHERE a.tenant_id=${auth.tenantId} AND a.enquiry_id=${enquiry.id} ORDER BY a.assigned_at DESC
+      `.execute(trx);
+      const followUps=await sql<any>`
+        SELECT f.*,u.full_name AS counsellor_name FROM follow_ups f
+        JOIN memberships m ON m.tenant_id=f.tenant_id AND m.id=f.assigned_to_membership_id
+        JOIN users u ON u.id=m.user_id
+        WHERE f.tenant_id=${auth.tenantId} AND f.enquiry_id=${enquiry.id} ORDER BY f.scheduled_at DESC
+      `.execute(trx);
+      return {enquiry:details.rows[0],activities:activities.rows,assignmentHistory:assignmentHistory.rows,followUps:followUps.rows};
+    });
+    response.setHeader("Cache-Control","no-store");
+    response.json(data);
+  } catch(error){next(error);}
+});
+
+enquiryRouter.patch("/enquiries/:id",requirePermission("enquiries.update"),async(request,response,next)=>{
+  try{
+    const auth=actorOf(request);
+    const expectedVersion=Number(request.body?.expectedVersion);
+    if(!Number.isInteger(expectedVersion)||expectedVersion<1)throw new ApiError(400,"VERSION_REQUIRED","Send expectedVersion to prevent overwriting another user's update.");
+    const body=request.body||{};
+    const result=await withTenant(auth.tenantId,async(trx)=>{
+      const enquiry=await getEnquiry(trx,auth.tenantId,request.params.id);
+      assertEnquiryScope(request,enquiry);
+      if(enquiry.row_version!==expectedVersion)throw new ApiError(409,"CONCURRENT_UPDATE","This enquiry changed. Refresh and retry.");
+      const fields:RawBuilder<unknown>[]=[];
+      if(body.studentName!==undefined)fields.push(sql`student_name=${inputText(body.studentName,"Student name",160,true)}`);
+      if(body.parentName!==undefined)fields.push(sql`parent_name=${inputText(body.parentName,"Parent name",160)}`);
+      if(body.mobile!==undefined){
+        const value=inputText(body.mobile,"Mobile",32,true)!;
+        if(!validatePhone(value))throw new ApiError(400,"INVALID_PHONE","Enter a valid mobile number.");
+        fields.push(sql`mobile=${value}`,sql`mobile_normalized=${normalizePhone(value)}`);
+      }
+      if(body.alternateMobile!==undefined){
+        const value=inputText(body.alternateMobile,"Alternate mobile",32);
+        if(value&&!validatePhone(value))throw new ApiError(400,"INVALID_PHONE","Alternate mobile is invalid.");
+        fields.push(sql`alternate_mobile=${value}`,sql`alternate_mobile_normalized=${value?normalizePhone(value):null}`);
+      }
+      if(body.email!==undefined){
+        const value=inputText(body.email,"Email",254);
+        if(value&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))throw new ApiError(400,"INVALID_EMAIL","Enter a valid email.");
+        fields.push(sql`email=${value}`);
+      }
+      if(body.currentClass!==undefined)fields.push(sql`current_class=${inputText(body.currentClass,"Current class",80)}`);
+      if(body.schoolName!==undefined)fields.push(sql`school_name=${inputText(body.schoolName,"School",180)}`);
+      if(body.courseId!==undefined){
+        const value=inputUuid(body.courseId,"Course");await assertReference(trx,auth.tenantId,"courses",value,"Course");
+        fields.push(sql`course_id=${value}`);
+      }
+      if(body.sourceId!==undefined){
+        const value=inputUuid(body.sourceId,"Source");await assertReference(trx,auth.tenantId,"enquiry_sources",value,"Source");
+        fields.push(sql`source_id=${value}`);
+      }
+      if(body.priority!==undefined){
+        const value=inputText(body.priority,"Priority",16,true)!;
+        if(!["low","normal","high","urgent"].includes(value))throw new ApiError(400,"INVALID_PRIORITY","Priority is invalid.");
+        fields.push(sql`priority=${value}`);
+      }
+      if(body.interestedMode!==undefined){
+        const value=inputText(body.interestedMode,"Interested mode",16);
+        if(value&&!["offline","online","hybrid"].includes(value))throw new ApiError(400,"INVALID_MODE","Mode is invalid.");
+        fields.push(sql`interested_mode=${value}`);
+      }
+      if(body.expectedJoiningDate!==undefined)fields.push(sql`expected_joining_date=${inputDate(body.expectedJoiningDate,"Expected joining date")}`);
+      if(body.preferredContactTime!==undefined)fields.push(sql`preferred_contact_time=${inputText(body.preferredContactTime,"Preferred contact time",100)}`);
+      if(body.remarks!==undefined)fields.push(sql`remarks=${inputText(body.remarks,"Remarks",3000)}`);
+      if(body.customFields!==undefined){
+        if(!body.customFields||typeof body.customFields!=="object"||Array.isArray(body.customFields)||Object.keys(body.customFields).length>20)throw new ApiError(400,"INVALID_CUSTOM_FIELDS","Custom fields must be an object with up to 20 keys.");
+        fields.push(sql`custom_fields=${JSON.stringify(body.customFields)}::jsonb`);
+      }
+      if(!fields.length)throw new ApiError(400,"NO_CHANGES","No editable fields were supplied.");
+      fields.push(sql`updated_by_membership_id=${auth.membershipId}`,sql`updated_at=now()`,sql`row_version=row_version+1`);
+      const updated=await sql<any>`
+        UPDATE enquiries SET ${sql.join(fields,sql`,`)}
+        WHERE tenant_id=${auth.tenantId} AND id=${enquiry.id} AND row_version=${expectedVersion}
+        RETURNING *
+      `.execute(trx);
+      if(!updated.rows[0])throw new ApiError(409,"CONCURRENT_UPDATE","This enquiry changed while saving.");
+      await addActivity(trx,auth.tenantId,enquiry.id,auth.membershipId,"updated","Enquiry details updated",null,{rowVersion:updated.rows[0].row_version});
+      await addAudit(trx,auth.tenantId,auth.membershipId,"enquiry.updated","enquiry",enquiry.id,request.ip||null,{rowVersion:updated.rows[0].row_version});
+      return updated.rows[0];
+    });
+    response.json({enquiry:result});
+  }catch(error){next(error);}
+});
