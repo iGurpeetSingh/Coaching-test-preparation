@@ -109,6 +109,22 @@ CREATE TABLE IF NOT EXISTS exam_attempt_answers (
   FOREIGN KEY (tenant_id, paper_question_id) REFERENCES exam_paper_questions(tenant_id, id) ON DELETE RESTRICT
 );
 
+CREATE TABLE IF NOT EXISTS exam_attempt_grades (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
+  attempt_id uuid NOT NULL,
+  paper_question_id uuid NOT NULL,
+  awarded_marks numeric(10,2) NOT NULL CHECK (awarded_marks >= 0),
+  feedback text,
+  graded_by_membership_id uuid NOT NULL,
+  graded_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id, id),
+  UNIQUE (tenant_id, attempt_id, paper_question_id),
+  FOREIGN KEY (tenant_id, attempt_id) REFERENCES exam_attempts(tenant_id, id) ON DELETE CASCADE,
+  FOREIGN KEY (tenant_id, paper_question_id) REFERENCES exam_paper_questions(tenant_id, id) ON DELETE RESTRICT,
+  FOREIGN KEY (tenant_id, graded_by_membership_id) REFERENCES memberships(tenant_id, id) ON DELETE RESTRICT
+);
+
 CREATE TABLE IF NOT EXISTS exam_attempt_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE RESTRICT,
@@ -127,7 +143,7 @@ DECLARE
 BEGIN
   FOREACH table_name IN ARRAY ARRAY[
     'student_portal_links','exam_papers','exam_paper_questions','exam_attempts',
-    'exam_attempt_answers','exam_attempt_events'
+    'exam_attempt_answers','exam_attempt_grades','exam_attempt_events'
   ]
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', table_name);
