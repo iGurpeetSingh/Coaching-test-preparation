@@ -1,42 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createDemoAttempt,
+  getDemoAttempt,
+  saveDemoAttemptAnswers,
+  submitDemoAttempt,
+  type DemoAttempt,
+  type DemoPaper,
+} from "../papers/demo-paper-store";
 import "./student-exams.css";
 
-type PaperType = "objective" | "written";
-type ObjectiveQuestion = { prompt: string; options: string[]; marks?: number };
-type WrittenQuestion = { prompt: string; marks: number };
-export type ExamPaper = {
-  paperType: PaperType;
-  title: string;
-  subject: string;
-  className: string;
-  startAt: string;
-  durationMinutes: number;
-  instructions?: string;
-  questions?: ObjectiveQuestion[];
-  writtenQuestions?: WrittenQuestion[];
-};
-
-type StartedAttempt = {
-  attemptId: string;
-  receiptToken: string;
-  expiresAt: string;
-  paper: ExamPaper;
-};
-
-type AttemptResult = {
-  attemptId: string;
-  title: string;
-  status: "evaluated" | "awaiting_marking" | "graded" | string;
-  score: number | null;
-  totalMarks: number;
-  correctCount?: number;
-  incorrectCount?: number;
-  unansweredCount?: number;
-};
-
 type Props = {
-  paper: ExamPaper;
-  apiBaseUrl: string;
+  paper: DemoPaper;
   onClose: () => void;
 };
 
@@ -48,167 +22,132 @@ function formatRemaining(seconds: number): string {
   return [hours, minutes, secs].map((part) => String(part).padStart(2, "0")).join(":");
 }
 
-export default function StudentExamRunner({ paper, apiBaseUrl, onClose }: Props) {
+function isAttemptComplete(attempt: DemoAttempt | null): boolean {
+  return Boolean(attempt && attempt.status !== "in_progress");
+}
+
+export default function StudentExamRunner({ paper, onClose }: Props) {
   const [studentName, setStudentName] = useState("");
   const [rollNumber, setRollNumber] = useState("");
-  const [attempt, setAttempt] = useState<StartedAttempt | null>(null);
+  const [attempt, setAttempt] = useState<DemoAttempt | null>(null);
   const [answers, setAnswers] = useState<Record<string, number | string>>({});
   const [questionIndex, setQuestionIndex] = useState(0);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
-  const [result, setResult] = useState<AttemptResult | null>(null);
-  const [checkingResult, setCheckingResult] = useState(false);
-  const [resultError, setResultError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const submitLock = useRef(false);
 
-  const questions = useMemo(() => (
-    paper.paperType === "objective"
-      ? (paper.questions || [])
-      : (paper.writtenQuestions || [])
-  ), [paper]);
+  const isObjective = paper.paperType === "objective";
+  const questions = useMemo(
+    () => isObjective ? paper.questions || [] : paper.writtenQuestions || [],
+    [isObjective, paper.questions, paper.writtenQuestions]
+  );
 
   const answeredCount = useMemo(() => questions.reduce((count, _question, index) => {
     const value = answers[String(index)];
-    return count + (typeof value === "string" ? (value.trim() ? 1 : 0) : (value === undefined ? 0 : 1));
+    return count + (typeof value === "string" ? (value.trim() ? 1 : 0) : value === undefined ? 0 : 1);
   }, 0), [answers, questions]);
 
-  const startAttempt = useCallback(async () => {
+  const startAttempt = useCallback(() => {
     if (!studentName.trim() || !rollNumber.trim()) {
       setError("Enter your full name and roll number before starting.");
       return;
     }
-    if (!apiBaseUrl) {
-      setError("The exam service is not configured yet.");
-      return;
-    }
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(`${apiBaseUrl}/api/exams/${paper.paperType}/attempts/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ studentName: studentName.trim(), rollNumber: rollNumber.trim() }),
-        cache: "no-store",
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.detail || `Could not start exam (HTTP ${response.status}).`);
-      const started = data as StartedAttempt;
+      const started = createDemoAttempt(paper, studentName, rollNumber);
       setAttempt(started);
       setAnswers({});
       setQuestionIndex(0);
-      setResult(null);
       setRemainingSeconds(Math.max(0, Math.floor((Date.parse(started.expiresAt) - Date.now()) / 1000)));
       submitLock.current = false;
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not connect to the exam service.");
+      setError(cause instanceof Error ? cause.message : "Could not start this demo exam.");
     } finally {
       setBusy(false);
     }
-  }, [apiBaseUrl, paper.paperType, studentName, rollNumber]);
+  }, [paper, studentName, rollNumber]);
 
-  const refreshWrittenResult = useCallback(async () => {
-    if (!attempt || paper.paperType !== "written") return;
-    setCheckingResult(true);
-    setResultError("");
-    try {
-      const response = await fetch(
-        `${apiBaseUrl}/api/exams/written/attempts/${attempt.attemptId}/result`,
-        {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-            "X-Exam-Receipt-Token": attempt.receiptToken,
-          },
-          cache: "no-store",
-        }
-      );
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.detail || "Could not refresh written result.");
-      setResult(data as AttemptResult);
-    } catch (cause) {
-      setResultError(cause instanceof Error ? cause.message : "Could not refresh result.");
-    } finally {
-      setCheckingResult(false);
-    }
-  }, [apiBaseUrl, attempt, paper.paperType]);
-
-  const submitExam = useCallback(async () => {
-    if (!attempt || submitLock.current || result) return;
+  const submitExam = useCallback(() => {
+    if (!attempt || submitLock.current || attempt.status !== "in_progress") return;
     submitLock.current = true;
     setBusy(true);
     setError("");
     try {
-      const response = await fetch(
-        `${apiBaseUrl}/api/exams/${paper.paperType}/attempts/${attempt.attemptId}/submit`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            "X-Exam-Receipt-Token": attempt.receiptToken,
-          },
-          body: JSON.stringify({ answers }),
-          cache: "no-store",
-        }
-      );
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.detail || `Submission failed (HTTP ${response.status}).`);
-      setResult(data as AttemptResult);
+      const submitted = submitDemoAttempt(attempt.attemptId);
+      if (!submitted) throw new Error("Submission record was not found. Please return to the exam list.");
+      setAttempt(submitted);
     } catch (cause) {
       submitLock.current = false;
       setError(cause instanceof Error ? cause.message : "The exam could not be submitted. Please retry.");
     } finally {
       setBusy(false);
     }
-  }, [apiBaseUrl, answers, attempt, paper.paperType, result]);
+  }, [attempt]);
 
   useEffect(() => {
-    if (!attempt || result) return;
+    if (!attempt || isAttemptComplete(attempt)) return;
     const timer = window.setInterval(() => {
       const remaining = Math.max(0, Math.floor((Date.parse(attempt.expiresAt) - Date.now()) / 1000));
       setRemainingSeconds(remaining);
       if (remaining === 0) {
         window.clearInterval(timer);
-        void submitExam();
+        submitExam();
       }
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [attempt, result, submitExam]);
+  }, [attempt, submitExam]);
+
+  useEffect(() => {
+    if (!attempt || attempt.status !== "awaiting_marking") return;
+    const refresh = window.setInterval(() => {
+      const latest = getDemoAttempt(attempt.attemptId);
+      if (latest && latest.status !== attempt.status) setAttempt(latest);
+    }, 2000);
+    return () => window.clearInterval(refresh);
+  }, [attempt]);
+
+  function updateAnswer(value: number | string) {
+    if (!attempt) return;
+    const next = { ...answers, [String(questionIndex)]: value };
+    setAnswers(next);
+    saveDemoAttemptAnswers(attempt.attemptId, next);
+  }
 
   const question = questions[questionIndex];
-  const isObjective = paper.paperType === "objective";
+  const isComplete = isAttemptComplete(attempt);
 
-  if (result) {
-    const isWritten = paper.paperType === "written";
-    const isWrittenPending = result.status === "awaiting_marking";
+  if (attempt && isComplete) {
+    const written = paper.paperType === "written";
+    const pending = attempt.status === "awaiting_marking";
     return (
       <section className="student-runner">
         <div className="student-runner-header">
-          <div><span className="student-exams-eyebrow">EXAM SUBMISSION</span><h1>Submission received</h1><p>{result.title} · {studentName} · Roll {rollNumber}</p></div>
+          <div>
+            <span className="student-exams-eyebrow">EXAM SUBMISSION</span>
+            <h1>Submission received</h1>
+            <p>{paper.title} · {studentName} · Roll {rollNumber}</p>
+          </div>
           <span className="student-exam-status is-published">Submitted</span>
         </div>
         <div className="student-runner-result">
-          {isWrittenPending ? (
+          {pending ? (
             <>
               <span className="student-runner-result-kicker">WRITTEN PAPER</span>
               <h2>Awaiting teacher evaluation</h2>
-              <p>Your answers have been saved. The marks will be available after the teacher checks your answers.</p>
-              <button type="button" className="student-exam-open" disabled={checkingResult} onClick={() => void refreshWrittenResult()}>
-                {checkingResult ? "Checking result..." : "Refresh evaluation status"}
-              </button>
+              <p>Your answers are saved in this demo browser. Marks will appear after the teacher checks your answers in Paper Management.</p>
             </>
           ) : (
             <>
-              <span className="student-runner-result-kicker">{isWritten ? "WRITTEN PAPER RESULT" : "OBJECTIVE PAPER RESULT"}</span>
-              <h2>{result.score ?? 0} <small>/ {result.totalMarks} marks</small></h2>
-              {!isWritten && <p>{result.correctCount ?? 0} correct · {result.incorrectCount ?? 0} incorrect · {result.unansweredCount ?? 0} unanswered</p>}
-              {isWritten && <p>Your written answers have been checked and marks have been published.</p>}
+              <span className="student-runner-result-kicker">{written ? "WRITTEN PAPER RESULT" : "OBJECTIVE PAPER RESULT"}</span>
+              <h2>{attempt.score ?? 0} <small>/ {attempt.totalMarks} marks</small></h2>
+              {!written && <p>{attempt.correctCount ?? 0} correct · {attempt.incorrectCount ?? 0} incorrect · {attempt.unansweredCount ?? 0} unanswered</p>}
+              {written && <p>Your written answers have been checked and marks have been published.</p>}
             </>
           )}
-          <p className="student-runner-receipt">Submission ID: {result.attemptId}</p>
+          <p className="student-runner-receipt">Submission ID: {attempt.attemptId}</p>
         </div>
-        {resultError && <p className="student-exam-connection-note" role="alert">{resultError}</p>}
         <button className="student-exam-open" type="button" onClick={onClose}>Back to exams</button>
       </section>
     );
@@ -219,7 +158,11 @@ export default function StudentExamRunner({ paper, apiBaseUrl, onClose }: Props)
       <section className="student-runner">
         <button type="button" className="student-runner-back" onClick={onClose}>← Back to exam list</button>
         <div className="student-runner-header">
-          <div><span className="student-exams-eyebrow">EXAM INSTRUCTIONS</span><h1>{paper.title}</h1><p>{paper.subject} · {paper.className} · {paper.durationMinutes} minutes · 100 marks</p></div>
+          <div>
+            <span className="student-exams-eyebrow">EXAM INSTRUCTIONS · DEMO MODE</span>
+            <h1>{paper.title}</h1>
+            <p>{paper.subject} · {paper.className} · {paper.durationMinutes} minutes · 100 marks</p>
+          </div>
           <span className="student-exam-status is-published">Published</span>
         </div>
         {paper.instructions && <p className="student-runner-instructions">{paper.instructions}</p>}
@@ -227,8 +170,8 @@ export default function StudentExamRunner({ paper, apiBaseUrl, onClose }: Props)
           <h2>Student details</h2>
           <label>Full name<input value={studentName} onChange={(event) => setStudentName(event.target.value)} placeholder="Enter your full name" autoComplete="name" /></label>
           <label>Roll number<input value={rollNumber} onChange={(event) => setRollNumber(event.target.value)} placeholder="Enter your roll number" /></label>
-          <p>Your identity is currently self-entered because this Coaching project does not yet contain an active student sign-in/session API.</p>
-          <button className="student-exam-open" type="button" disabled={busy} onClick={() => void startAttempt()}>{busy ? "Starting exam..." : "Start Exam →"}</button>
+          <p>Demo mode: student details and answers are stored only in this browser. No student account or external API is required.</p>
+          <button className="student-exam-open" type="button" disabled={busy} onClick={startAttempt}>{busy ? "Starting exam..." : "Start Exam →"}</button>
         </div>
         {error && <p className="student-exam-connection-note" role="alert">{error}</p>}
       </section>
@@ -238,25 +181,44 @@ export default function StudentExamRunner({ paper, apiBaseUrl, onClose }: Props)
   return (
     <section className="student-runner">
       <div className="student-runner-header">
-        <div><span className="student-exams-eyebrow">{isObjective ? "OBJECTIVE EXAM" : "WRITTEN EXAM"}</span><h1>{attempt.paper.title}</h1><p>{studentName} · Roll {rollNumber} · {answeredCount}/{questions.length} answered</p></div>
-        <div className={remainingSeconds <= 300 ? "student-runner-timer is-warning" : "student-runner-timer"}><span>TIME LEFT</span><strong>{formatRemaining(remainingSeconds)}</strong></div>
+        <div>
+          <span className="student-exams-eyebrow">{isObjective ? "OBJECTIVE EXAM" : "WRITTEN EXAM"}</span>
+          <h1>{paper.title}</h1>
+          <p>{studentName} · Roll {rollNumber} · {answeredCount}/{questions.length} answered</p>
+        </div>
+        <div className={remainingSeconds <= 300 ? "student-runner-timer is-warning" : "student-runner-timer"}>
+          <span>TIME LEFT</span><strong>{formatRemaining(remainingSeconds)}</strong>
+        </div>
       </div>
-      {attempt.paper.instructions && <p className="student-runner-instructions">{attempt.paper.instructions}</p>}
+      {paper.instructions && <p className="student-runner-instructions">{paper.instructions}</p>}
       <div className="student-runner-layout">
         <article className="student-runner-question">
-          <div className="student-runner-question-meta"><span>QUESTION {questionIndex + 1} OF {questions.length}</span><span>{isObjective ? (question as ObjectiveQuestion)?.marks ?? 2 : (question as WrittenQuestion)?.marks} MARKS</span></div>
+          <div className="student-runner-question-meta">
+            <span>QUESTION {questionIndex + 1} OF {questions.length}</span>
+            <span>{isObjective ? 2 : paper.writtenQuestions?.[questionIndex]?.marks} MARKS</span>
+          </div>
           <h2>{question?.prompt}</h2>
           {isObjective ? (
             <div className="student-runner-options">
-              {((question as ObjectiveQuestion)?.options || []).map((option, index) => (
-                <button type="button" key={index} className={answers[String(questionIndex)] === index ? "is-selected" : ""} onClick={() => setAnswers((current) => ({ ...current, [String(questionIndex)]: index }))}>
+              {(paper.questions?.[questionIndex]?.options || []).map((option, index) => (
+                <button
+                  type="button"
+                  key={index}
+                  className={answers[String(questionIndex)] === index ? "is-selected" : ""}
+                  onClick={() => updateAnswer(index)}
+                >
                   <span>{String.fromCharCode(65 + index)}</span>{option}
                 </button>
               ))}
             </div>
           ) : (
             <label className="student-runner-answer">Your answer
-              <textarea rows={8} value={String(answers[String(questionIndex)] ?? "")} onChange={(event) => setAnswers((current) => ({ ...current, [String(questionIndex)]: event.target.value }))} placeholder="Write your answer here..." />
+              <textarea
+                rows={8}
+                value={String(answers[String(questionIndex)] ?? "")}
+                onChange={(event) => updateAnswer(event.target.value)}
+                placeholder="Write your answer here..."
+              />
             </label>
           )}
           <div className="student-runner-navigation">
@@ -271,12 +233,23 @@ export default function StudentExamRunner({ paper, apiBaseUrl, onClose }: Props)
           <div>{questions.map((_item, index) => {
             const answer = answers[String(index)];
             const answered = typeof answer === "string" ? Boolean(answer.trim()) : answer !== undefined;
-            return <button type="button" key={index} className={(index === questionIndex ? "is-current " : "") + (answered ? "is-answered" : "")} onClick={() => setQuestionIndex(index)}>{index + 1}</button>;
+            return (
+              <button
+                type="button"
+                key={index}
+                className={(index === questionIndex ? "is-current " : "") + (answered ? "is-answered" : "")}
+                onClick={() => setQuestionIndex(index)}
+              >
+                {index + 1}
+              </button>
+            );
           })}</div>
           <button className="student-runner-submit" type="button" disabled={busy} onClick={() => {
             const unanswered = questions.length - answeredCount;
-            if (window.confirm(`Submit this paper now? ${unanswered} question(s) are unanswered.`)) void submitExam();
-          }}>{busy ? "Submitting..." : "Submit Exam"}</button>
+            if (window.confirm("Submit this paper now? " + unanswered + " question(s) are unanswered.")) submitExam();
+          }}>
+            {busy ? "Submitting..." : "Submit Exam"}
+          </button>
         </aside>
       </div>
       {error && <p className="student-exam-connection-note" role="alert">{error}</p>}
