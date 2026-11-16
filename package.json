@@ -3,14 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "description": "Multi-tenant coaching institute ERP and examination platform",
-  "workspaces": ["apps/web", "apps/api"],
-  "engines": { "node": ">=22.12.0" },
+  "workspaces": [
+    "apps/web",
+    "apps/api"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "concurrently -k -n WEB,API -c cyan,magenta \"npm:dev:web\" \"npm:dev:api\"",
     "dev:web": "npm run dev --workspace @coaching/web",
     "dev:api": "npm run dev --workspace @coaching/api",
     "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
   },
-  "devDependencies": { "concurrently": "^9.2.1" }
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
 }
