@@ -163,13 +163,15 @@ authRouter.post("/login", loginLimiter, async (request, response, next) => {
     const sessionToken = randomBytes(48).toString("base64url");
     const csrfToken = randomBytes(32).toString("base64url");
     const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-    await sql\`
+    await withTenant(user.tenant_id, async (trx) => {
+      await sql\`
       INSERT INTO user_sessions (tenant_id, membership_id, token_hash, csrf_hash, expires_at, ip_address, user_agent)
       VALUES (
         \${user.tenant_id}, \${user.membership_id}, \${hash(sessionToken)}, \${hash(csrfToken)},
         \${expiresAt.toISOString()}, \${request.ip || null}, \${request.header("user-agent")?.slice(0, 500) || null}
       )
-    \`.execute(db);
+    \`.execute(trx);
+    });
 
     setSessionCookie(response, sessionToken);
     setCsrfCookie(response, csrfToken);
@@ -199,12 +201,15 @@ export async function requireAuth(request: Request, response: Response, next: Ne
 
     // Session table is the only unscoped lookup here. All tenant-owned identity rows
     // are fetched only after the tenant id has been established from this opaque token.
-    const sessionResult = await sql<any>\`
-      SELECT id AS session_id, tenant_id, membership_id, csrf_hash
-      FROM user_sessions
-      WHERE token_hash = \${hash(token)} AND revoked_at IS NULL AND expires_at > now()
-      LIMIT 1
-    \`.execute(db);
+    const sessionResult = await db.transaction().execute(async (trx) => {
+      await sql`select set_config('app.session_token_hash', ${hash(token)}, true)`.execute(trx);
+      return sql<any>`
+        SELECT id AS session_id, tenant_id, membership_id, csrf_hash
+        FROM user_sessions
+        WHERE token_hash = ${hash(token)} AND revoked_at IS NULL AND expires_at > now()
+        LIMIT 1
+      `.execute(trx);
+    });
     const session = sessionResult.rows[0];
     if (!session) {
       clearSessionCookies(response);
@@ -308,7 +313,10 @@ export function assertBranchAccess(request: Request, branchId: string): boolean 
 authRouter.post("/logout", requireAuth, requireCsrf, async (request, response, next) => {
   try {
     const sessionId = response.locals.sessionId as string;
-    await sql\`UPDATE user_sessions SET revoked_at = now() WHERE id = \${sessionId} AND revoked_at IS NULL\`.execute(db);
+    const auth = request.auth!;
+    await withTenant(auth.tenantId, async (trx) => {
+      await sql`UPDATE user_sessions SET revoked_at = now() WHERE tenant_id = ${auth.tenantId} AND id = ${sessionId} AND revoked_at IS NULL`.execute(trx);
+    });
     clearSessionCookies(response);
     response.status(200).json({ ok: true });
   } catch (error) {
