@@ -1,6 +1,7 @@
 # Research Baseline
 
-**Status:** Desk-research baseline captured — 14 November 2026.  
+**Status:** Initial baseline captured 14 November 2026; competitor and workflow research expanded — 16 November 2026.  
+**Research detail:** see [Industry Research & Competitor Analysis](INDUSTRY-RESEARCH-AND-COMPETITOR-ANALYSIS.md), [Business Workflows](BUSINESS-WORKFLOWS.md) and [Functional Requirements & Acceptance](FUNCTIONAL-REQUIREMENTS-AND-ACCEPTANCE.md).  
 **Not claimed complete:** institute pilot, formal legal/tax opinion, penetration test, production load test, OMR accuracy test and backup-restore drill.
 
 ## Product position
@@ -19,17 +20,18 @@ The differentiator is a connected academic record from admission and batch histo
 
 ## Competitor scan
 
-Vendor feature pages reviewed: Classpro, Teachmint, Classplus, Edmingle, Classe365, Entab CampusCare and Teachworks. This is a desk comparison, not independent hands-on certification; demos and commercial terms must be checked.
+Public-source desk review expanded to Classpro, Teachmint, Classplus, Testpress, Edmingle, Learnyst, Fedena and Moodle. These products occupy different market segments; the review is not a like-for-like vendor ranking or hands-on certification. Features not established by reviewed pages are marked as not verified, not assumed absent. Validate current packaging, integrations, support, security and commercial terms directly with vendors before procurement.
 
-- Classpro: coaching ERP, fee instalments, receipts, dues, late fees, attendance and tests.
-- Teachmint: institute administration, enquiries/admission, fees, attendance, timetable and exams.
-- Classplus: branded coaching app, video/course delivery and online tests.
-- Edmingle: courses/cohorts, assessments, learner analytics and certificates.
-- Classe365: student lifecycle, gradebook, attendance, LMS and fee/invoicing features.
-- Entab: adjacent school ERP reference for student, fee, attendance and exam operations.
-- Teachworks: tutoring scheduling, teacher/student records and billing.
+- Classpro: coaching operations including enquiries/follow-ups, fee collection, attendance, student performance and parent/student engagement.
+- Teachmint: institute management and assessments with question-bank, scheduling, question types and student/topic analytics advertised publicly.
+- Classplus: branded coaching app/website, digital courses, live/video classes, online assessments and student activity dashboard.
+- Testpress: exam-prep assessment engine with bulk Word MCQ upload, section-based exams, exam/rank scheduling and configurable result visibility.
+- Edmingle: training operations, multi-cohort/batch, assessments, certificates, engagement, multi-branch/multi-tenant and analytics.
+- Learnyst: mock tests/test series, question pool, multiple item types, section/overall timing, scheduling, attempt settings, autosave and analytics.
+- Fedena: adjacent school ERP covering dashboards, admission, finance, attendance, timetable, examination, gradebook and reporting.
+- Moodle: configurable LMS reference with reusable question bank, quiz, gradebook, group and mobile workflows.
 
-Sources: [Classpro](https://classpro.in/), [Teachmint](https://www.teachmint.com/), [Classplus](https://classplusapp.com/), [Edmingle](https://www.edmingle.com/), [Classe365](https://www.classe365.com/), [Entab](https://www.entab.in/), [Teachworks](https://teachworks.com/).
+The detailed source register and comparison are maintained in [Industry Research & Competitor Analysis](INDUSTRY-RESEARCH-AND-COMPETITOR-ANALYSIS.md).
 
 ## Academic and question-bank model
 
