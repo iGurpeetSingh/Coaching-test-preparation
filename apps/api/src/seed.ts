@@ -41,7 +41,9 @@ const permissions = [
   "enquiries.settings", "reports.read", "admissions.convert", "admissions.read",
   "branches.manage", "courses.manage", "users.manage",
   "attendance.read", "attendance.manage", "fees.read", "fees.manage",
-  "question_bank.read", "question_bank.manage"
+  "question_bank.read", "question_bank.manage",
+  "papers.read", "papers.manage", "exam.monitor", "results.read", "results.manage",
+  "student.exams.read", "student.exams.attempt"
 ];
 
 async function main() {
@@ -100,7 +102,8 @@ async function main() {
       ["academic_coordinator", "Academic Coordinator"],
       ["teacher", "Teacher"],
       ["accountant", "Accountant"],
-      ["exam_controller", "Exam Controller"]
+      ["exam_controller", "Exam Controller"],
+      ["student", "Student"]
     ] as const) {
       const role = await sql<{ id: string }>`
         INSERT INTO roles (tenant_id, key, name)
@@ -163,7 +166,8 @@ async function main() {
       academic_coordinator: ["admissions.read", "courses.manage", "attendance.read", "attendance.manage", "question_bank.read", "question_bank.manage", "reports.read"],
       teacher: ["admissions.read", "attendance.read", "attendance.manage", "question_bank.read", "question_bank.manage"],
       accountant: ["admissions.read", "fees.read", "fees.manage", "reports.read"],
-      exam_controller: ["admissions.read", "question_bank.read", "question_bank.manage", "reports.read"]
+      exam_controller: ["admissions.read", "question_bank.read", "question_bank.manage", "papers.read", "papers.manage", "exam.monitor", "results.read", "results.manage", "reports.read"],
+      student: ["student.exams.read", "student.exams.attempt"]
     };
     for (const [roleKey, keys] of Object.entries(rolePermissionMap)) {
       for (const permissionKey of keys) {
