@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import TestManagement from "./features/tests/TestManagement";
 import StudentExamLibrary from "./features/tests/StudentExamLibrary";
 import PaperBuilder from "./features/papers/PaperBuilder";
 import AuthScreen from "./features/auth/AuthScreen";
 import DirectoryPage from "./features/management/DirectoryPage";
 import EnquiryPage from "./features/admissions/EnquiryPage";
-import { bootstrapCsrf, getCurrentUser, signOut, type CurrentUserResponse } from "./lib/api";
+import { apiRequest, bootstrapCsrf, getCurrentUser, signOut, type CurrentUserResponse } from "./lib/api";
 
 const workspaceLinks = [
   ["Dashboard", "⌂"],
@@ -24,17 +24,16 @@ const managementLinks = [
   ["Settings", "⚙"]
 ] as const;
 
-const upcomingTests = [
-  { name: "Physics Mock Test 01", batch: "Class 12 · Science A", date: "18 Nov 2026", status: "Ready" },
-  { name: "Mathematics Weekly Test", batch: "JEE Foundation", date: "20 Nov 2026", status: "Scheduled" },
-  { name: "Chemistry Chapter Test", batch: "Class 11 · Science B", date: "22 Nov 2026", status: "Scheduled" }
-];
-
 function App() {
   const [active, setActive] = useState("Dashboard");
   const [query, setQuery] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<CurrentUserResponse | null>(null);
+  const [dashboardStats, setDashboardStats] = useState({
+    students: "—", batches: "—", enquiries: "—", admissions: "—"
+  });
+  const [statusBreakdown, setStatusBreakdown] = useState<Array<{ key: string; label: string; count: number }>>([]);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
 
   useEffect(() => {
     let activeRequest = true;
@@ -52,6 +51,33 @@ function App() {
     return () => { activeRequest = false; };
   }, []);
 
+  useEffect(() => {
+    if (!currentUser) return;
+    let activeRequest = true;
+    setDashboardLoading(true);
+    Promise.allSettled([
+      apiRequest<{ total: number }>("/students?page=1&pageSize=1"),
+      apiRequest<{ items: Array<{ is_active: boolean }> }>("/batches"),
+      apiRequest<{ metrics: { total: number }; statusBreakdown: Array<{ key: string; label: string; count: number }> }>("/dashboard"),
+      apiRequest<{ total: number }>("/admissions?page=1&pageSize=1")
+    ]).then((results) => {
+      if (!activeRequest) return;
+      const [students, batches, enquiries, admissions] = results;
+      setDashboardStats({
+        students: students.status === "fulfilled" ? String(students.value.total) : "—",
+        batches: batches.status === "fulfilled"
+          ? String(batches.value.items.filter((batch) => batch.is_active).length)
+          : "—",
+        enquiries: enquiries.status === "fulfilled" ? String(enquiries.value.metrics.total) : "—",
+        admissions: admissions.status === "fulfilled" ? String(admissions.value.total) : "—"
+      });
+      setStatusBreakdown(enquiries.status === "fulfilled" ? enquiries.value.statusBreakdown : []);
+    }).finally(() => {
+      if (activeRequest) setDashboardLoading(false);
+    });
+    return () => { activeRequest = false; };
+  }, [currentUser]);
+
   async function handleSignedIn() {
     const session = await getCurrentUser();
     setCurrentUser(session);
@@ -64,11 +90,6 @@ function App() {
     setQuery("");
     setActive("Dashboard");
   }
-  const filteredTests = useMemo(
-    () => upcomingTests.filter((test) => test.name.toLowerCase().includes(query.toLowerCase())),
-    [query]
-  );
-
   if (authLoading) {
     return <div className="auth-page"><div className="auth-card">Loading secure institute session…</div></div>;
   }
@@ -157,41 +178,44 @@ function App() {
           ) : (
             <>
               <div className="stats-grid">
-                <article className="stat-card"><div className="stat-top"><span className="stat-icon lavender">♙</span><span className="trend positive">+8.2%</span></div><div className="stat-value">1,240</div><div className="stat-label">Total Students</div><div className="stat-foot">Across all active batches</div></article>
-                <article className="stat-card"><div className="stat-top"><span className="stat-icon blue">▦</span><span className="trend neutral">Active</span></div><div className="stat-value">42</div><div className="stat-label">Active Batches</div><div className="stat-foot">Across 3 courses</div></article>
-                <article className="stat-card"><div className="stat-top"><span className="stat-icon mint">▣</span><span className="trend positive">+12 this month</span></div><div className="stat-value">135</div><div className="stat-label">Tests Conducted</div><div className="stat-foot">Online and offline</div></article>
-                <article className="stat-card"><div className="stat-top"><span className="stat-icon peach">↗</span><span className="trend positive">+3.4%</span></div><div className="stat-value">78.6%</div><div className="stat-label">Average Performance</div><div className="stat-foot">Across published results</div></article>
+                <article className="stat-card"><div className="stat-top"><span className="stat-icon lavender">♙</span><span className="trend neutral">{dashboardLoading ? "Loading" : "Live"}</span></div><div className="stat-value">{dashboardStats.students}</div><div className="stat-label">Admitted Students</div><div className="stat-foot">From admission records</div></article>
+                <article className="stat-card"><div className="stat-top"><span className="stat-icon blue">▦</span><span className="trend neutral">{dashboardLoading ? "Loading" : "Live"}</span></div><div className="stat-value">{dashboardStats.batches}</div><div className="stat-label">Active Batches</div><div className="stat-foot">Within accessible branches</div></article>
+                <article className="stat-card"><div className="stat-top"><span className="stat-icon mint">↗</span><span className="trend neutral">{dashboardLoading ? "Loading" : "Live"}</span></div><div className="stat-value">{dashboardStats.enquiries}</div><div className="stat-label">Active Enquiries</div><div className="stat-foot">Visible enquiry pipeline</div></article>
+                <article className="stat-card"><div className="stat-top"><span className="stat-icon peach">▣</span><span className="trend neutral">{dashboardLoading ? "Loading" : "Live"}</span></div><div className="stat-value">{dashboardStats.admissions}</div><div className="stat-label">Admissions</div><div className="stat-foot">Converted enquiry records</div></article>
               </div>
 
               <div className="section-heading"><div><h2>Quick actions</h2><p>Common tasks for your institute</p></div></div>
               <div className="quick-grid">
-                <button className="quick-card quick-purple" onClick={() => setActive("Tests & Exams")}><span>＋</span><strong>View exams</strong><small>Check published Objective and Written papers</small></button>
-                <button className="quick-card quick-blue" onClick={() => setActive("Paper")}><span>◈</span><strong>View papers</strong><small>Open the exam paper library</small></button>
-                <button className="quick-card quick-green" onClick={() => setActive("Batches")}><span>▦</span><strong>Manage batches</strong><small>Organise classes and students</small></button>
-                <button className="quick-card quick-orange" onClick={() => setActive("Reports")}><span>▥</span><strong>View reports</strong><small>Track academic performance</small></button>
+                <button className="quick-card quick-purple" onClick={() => setActive("Enquiries")}><span>＋</span><strong>New enquiry</strong><small>Capture and follow prospective students</small></button>
+                <button className="quick-card quick-blue" onClick={() => setActive("Students")}><span>♙</span><strong>View students</strong><small>Search admitted student records</small></button>
+                <button className="quick-card quick-green" onClick={() => setActive("Courses")}><span>▤</span><strong>Manage courses</strong><small>Set course names and standard fees</small></button>
+                <button className="quick-card quick-orange" onClick={() => setActive("Batches")}><span>▦</span><strong>Manage batches</strong><small>Organise branch groups and seat capacity</small></button>
               </div>
 
               <div className="section-heading tests-heading">
-                <div><h2>Upcoming tests</h2><p>Review and manage scheduled assessments</p></div>
-                <button className="text-button" onClick={() => setActive("Tests & Exams")}>View all tests →</button>
+                <div><h2>Enquiry pipeline</h2><p>Current enquiry status distribution from your institute CRM</p></div>
+                <button className="text-button" onClick={() => setActive("Enquiries")}>Open enquiries →</button>
               </div>
               <div className="table-card">
                 <div className="table-wrap">
-                  <table><thead><tr><th>TEST NAME</th><th>BATCH</th><th>DATE</th><th>STATUS</th><th></th></tr></thead>
+                  <table><thead><tr><th>STATUS</th><th>ENQUIRIES</th><th>SHARE</th><th></th></tr></thead>
                     <tbody>
-                      {filteredTests.map((test) => <tr key={test.name}>
-                        <td><strong>{test.name}</strong><span className="table-sub">Assessment · 60 minutes</span></td>
-                        <td>{test.batch}</td><td>{test.date}</td>
-                        <td><span className={"status status-" + test.status.toLowerCase()}>{test.status}</span></td>
-                        <td><button className="row-action" aria-label={"Open " + test.name} onClick={() => setActive("Tests & Exams")}>•••</button></td>
-                      </tr>)}
-                      {filteredTests.length === 0 && <tr><td colSpan={5} className="empty-state">No matching tests found.</td></tr>}
+                      {statusBreakdown.filter((item) => item.count > 0).map((item) => (
+                        <tr key={item.key}>
+                          <td><strong>{item.label}</strong></td>
+                          <td>{item.count}</td>
+                          <td>{dashboardStats.enquiries === "—" || Number(dashboardStats.enquiries) === 0 ? "—" : Math.round(item.count / Number(dashboardStats.enquiries) * 100) + "%"}</td>
+                          <td><button className="row-action" aria-label={"Open " + item.label + " enquiries"} onClick={() => setActive("Enquiries")}>→</button></td>
+                        </tr>
+                      ))}
+                      {!statusBreakdown.some((item) => item.count > 0) && (
+                        <tr><td colSpan={4} className="empty-state">{dashboardLoading ? "Loading enquiry pipeline…" : "No enquiry records are available for your account yet."}</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
-                <div className="table-footer"><span>Showing {filteredTests.length} of {upcomingTests.length} sample tests</span><span>Prototype data</span></div>
+                <div className="table-footer"><span>Counts are calculated from records visible to your role and branches.</span><span>{dashboardLoading ? "Refreshing…" : "Live API data"}</span></div>
               </div>
-              <p className="demo-note">Illustrative sample figures only. Live institute data will appear when the relevant modules and API connections are configured.</p>
             </>
           )}
         </section>
