@@ -1,0 +1,14 @@
+.fee-page{display:grid;gap:18px;}
+.fee-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.fee-stats article{display:grid;gap:7px;padding:17px;border:1px solid #e9eaf1;border-radius:12px;background:#fff;}
+.fee-stats span{color:#85879a;font-size:11px;}
+.fee-stats strong{color:#282a40;font-size:22px;}
+.fee-forms{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.fee-form-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;}
+.fee-form-fields label{display:grid;gap:6px;min-width:0;color:#54566b;font-size:11px;font-weight:700;}
+.fee-form-fields input,.fee-form-fields select{width:100%;min-width:0;box-sizing:border-box;height:38px;border:1px solid #e3e5ed;border-radius:8px;padding:0 9px;background:#fff;color:#303247;font:inherit;font-size:12px;}
+.fee-section-heading{display:flex;align-items:center;justify-content:space-between;padding:15px;border-bottom:1px solid #eff0f4;}
+.fee-section-heading strong{color:#303249;font-size:13px;}
+.fee-section-heading span{color:#9294a4;font-size:10px;}
+@media(max-width:1000px){.fee-forms{grid-template-columns:1fr;}}
+@media(max-width:600px){.fee-stats{grid-template-columns:1fr;}.fee-form-fields{grid-template-columns:1fr;}}
