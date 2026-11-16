@@ -14,7 +14,7 @@
   "dependencies": {
     "argon2": "^0.45.2",
     "express": "^5.1.0",
-    "express-rate-limit": "^8.3.1",
+    "express-rate-limit": "^8.7.4",
     "kysely": "^0.29.9",
     "pg": "^8.23.1"
   },
