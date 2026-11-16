@@ -329,7 +329,7 @@ CREATE TABLE IF NOT EXISTS students (
   updated_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, id),
   UNIQUE (tenant_id, student_number),
-  FOREIGN KEY (tenant_id, created_from_enquiry_id) REFERENCES enquiries(tenant_id, id) ON DELETE SET NULL
+  FOREIGN KEY (tenant_id, created_from_enquiry_id) REFERENCES enquiries(tenant_id, id) ON DELETE SET NULL (created_from_enquiry_id)
 );
 CREATE INDEX IF NOT EXISTS students_mobile_lookup_idx ON students(tenant_id, mobile_normalized);
 
@@ -382,7 +382,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   ip_address inet,
   safe_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
-  FOREIGN KEY (tenant_id, actor_membership_id) REFERENCES memberships(tenant_id, id) ON DELETE SET NULL
+  FOREIGN KEY (tenant_id, actor_membership_id) REFERENCES memberships(tenant_id, id) ON DELETE SET NULL (actor_membership_id)
 );
 CREATE INDEX IF NOT EXISTS audit_logs_tenant_created_idx ON audit_logs(tenant_id, created_at DESC);
 
