@@ -15,7 +15,7 @@ type ResultQuestion = {
   answer_snapshot: unknown; marks: number; answer_value: unknown;
   awarded_marks: number | null; feedback: string | null; graded_by: string | null;
 };
-type AttemptDetail = { attempt: ResultRow & { status: string; branch_id: string; objective_score: number }; questions: ResultQuestion[] };
+type AttemptDetail = { attempt: ResultRow & { id: string; branch_id: string; objective_score: number }; questions: ResultQuestion[] };
 type Props = { permissions: string[] };
 const getError = (error: unknown) => error instanceof Error ? error.message : "The request could not be completed.";
 const fmtDate = (value: string | null) => value ? new Date(value).toLocaleString("en-IN") : "—";
