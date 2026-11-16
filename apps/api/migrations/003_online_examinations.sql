@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS exam_attempts (
   submitted_at timestamptz,
   submit_reason text,
   total_marks numeric(10,2) NOT NULL DEFAULT 0 CHECK (total_marks >= 0),
+  objective_score numeric(10,2) NOT NULL DEFAULT 0 CHECK (objective_score >= 0),
   score numeric(10,2),
   correct_count integer,
   incorrect_count integer,
