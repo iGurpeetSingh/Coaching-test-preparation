@@ -231,6 +231,13 @@ CREATE TABLE IF NOT EXISTS enquiry_status_transitions (
   FOREIGN KEY (tenant_id, to_status_key) REFERENCES enquiry_statuses(tenant_id, key) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS tenant_enquiry_settings (
+  tenant_id uuid PRIMARY KEY REFERENCES tenants(id) ON DELETE CASCADE,
+  auto_assign_on_create boolean NOT NULL DEFAULT false,
+  round_robin_mode text NOT NULL DEFAULT 'least_loaded' CHECK (round_robin_mode IN ('least_loaded','round_robin')),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS enquiry_id_sequences (
   tenant_id uuid NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   branch_id uuid NOT NULL,
@@ -443,7 +450,7 @@ BEGIN
   FOREACH table_name IN ARRAY ARRAY[
     'branches','memberships','roles','role_permissions','membership_roles',
     'membership_branch_access','courses','batches','fee_structures',
-    'counsellor_profiles','enquiry_sources','enquiry_statuses',
+    'counsellor_profiles','enquiry_sources','enquiry_statuses','tenant_enquiry_settings',
     'enquiry_status_transitions','enquiry_id_sequences','enquiries',
     'enquiry_assignments','follow_ups','enquiry_activities','students',
     'admission_id_sequences','admissions','audit_logs','idempotency_keys'
