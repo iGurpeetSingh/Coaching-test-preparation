@@ -6,49 +6,51 @@ Status updated: 16 November 2026. Checkmarks mean code or documentation exists i
 - [x] Product research, requirements and architecture documentation baseline.
 - [x] React/TypeScript web workspace.
 - [x] Express/TypeScript API workspace.
-- [x] Responsive dashboard shell and liveness/readiness API endpoints.
-- [x] GitHub Actions typecheck and production build workflow.
-- [x] Workspace test command and six domain unit tests.
-- [ ] Generate and commit a reproducible npm lockfile; audit dependency licenses and install scripts.
+- [x] Responsive dashboard shell and liveness/readiness endpoints.
+- [x] GitHub Actions typecheck, unit-test and production-build workflow.
+- [x] Workspace test command and six API domain unit tests.
+- [x] Ordered SQL migration runner and local bootstrap environment example.
+- [ ] Generate/commit a reproducible npm lockfile and audit dependency licenses/install scripts.
 
 ## Phase 1 — Platform foundation
 - [x] Tenant, branch, membership, role, permission and session schema.
 - [x] CSRF bootstrap, login, logout, current-user and permission middleware.
-- [x] PostgreSQL migration with forced tenant RLS on tenant-owned tables.
+- [x] PostgreSQL migrations with forced tenant RLS on tenant-owned tables.
 - [x] Tenant-scoped transaction helper and database readiness check.
-- [x] Enquiry/admission activity and audit log writes.
-- [ ] Database-backed authentication, migration and tenant-isolation integration tests.
-- [ ] Adversarial RLS tests using the same non-owner application database role used in deployment.
-- [ ] MFA, invitation lifecycle, password recovery and privileged-action re-authentication.
+- [x] Activity and audit log writes for admissions/enquiries.
+- [ ] Database-backed authentication/migration integration tests and adversarial tenant-isolation tests.
+- [ ] MFA, invite lifecycle, password recovery and privileged-action re-authentication.
 
 ## Phase 2 — Institute ERP
-- [x] Enquiry CRM API: create, search, update, transition, assign, archive/restore and activity.
-- [x] Follow-up API: worklist, create, complete and cancel.
-- [x] Admission conversion with duplicate-student reuse, fee validation, batch capacity check and audit.
-- [x] Course API: list, create, update and deactivate.
-- [x] Batch API: branch-scoped list, create, update and deactivate.
-- [x] Admitted-student directory API with search, pagination and branch scoping.
-- [x] Connect login, dashboard CRM metrics, enquiry, student, course and batch screens to the API.
-- [ ] Branch administration, academic years, faculty and guardian relationship management.
-- [ ] Timetable, attendance, corrections/approvals, homework and study material.
-- [ ] Fee plans, instalments, payment allocations, receipts, refunds, expenses and reconciliation.
+- [x] Enquiry CRM API/UI: create, search, transition, assignment, archive/restore and activity.
+- [x] Admission conversion with student creation/reuse, fee validation, batch capacity and audit trail.
+- [x] Course and batch APIs/UI with branch scoping.
+- [x] Admitted-student directory API/UI with search and pagination.
+- [x] Attendance session, roster, mark and submit API/UI.
+- [x] Fee charge, payment allocation and receipt APIs/UI.
+- [ ] Fee instalments, concessions, refund/reversal approval and reconciliation reports.
+- [ ] Timetable, academic-year lifecycle, faculty and guardian management.
+- [ ] Homework, assignment submission and study-material access.
 
 ## Phase 3 — Question Bank
-- [ ] Syllabus taxonomy and subject/chapter/topic mapping.
-- [ ] Versioned objective and subjective question authoring, review and media.
-- [ ] Bulk import preview, row-level validation, import report and export.
-- [ ] Question usage history and permissioned approval.
+- [x] Subject/chapter/topic syllabus schema and create/list APIs.
+- [x] Question authoring for objective and subjective types.
+- [x] Draft/review/publish/archive lifecycle and new-version creation.
+- [x] Question Bank UI with syllabus authoring and review actions.
+- [ ] Full bulk import preview, row-level validation, export and question usage history.
+- [ ] Multi-reviewer approval, media attachments and richer answer-key editing.
 
 ## Phase 4 — Paper Generator
-- [ ] Replace browser-local paper storage with database-backed paper APIs.
+- [ ] Replace browser-local Paper Builder store with database-backed paper APIs.
 - [ ] Blueprint editor, section/marks constraints and shortage report.
 - [ ] Deterministic question selection, duplicate prevention and immutable paper snapshots.
 - [ ] Printable question paper and answer-key PDF.
 
 ## Phase 5 — Online Examinations
-- [ ] Exam schedule, eligibility, assignment and student identity checks.
+- [ ] Secure student/guardian portal account linking and exam eligibility.
+- [ ] Exam schedule and assignments.
 - [ ] Server-authoritative timer and deadline.
-- [ ] Answer revisions, transactional autosave, reconnect recovery and idempotent submit.
+- [ ] Transactional answer autosave, revision history, reconnect recovery and idempotent submit.
 - [ ] Objective grading and manual rubric evaluation.
 
 ## Phase 6 — Results and analytics
@@ -56,12 +58,13 @@ Status updated: 16 November 2026. Checkmarks mean code or documentation exists i
 - [ ] Student/batch/branch performance reports and exports.
 - [ ] Topic/question item analysis and intervention tracking.
 
-## Phase 7 — Optional advanced features
-- [ ] PWA/offline workflows with explicit sync/reconciliation.
-- [ ] OMR only after a representative accuracy pilot.
-- [ ] Supported-subset QTI import/export.
-- [ ] Optional payment, messaging, AI and proctoring adapters.
+## Phase 7 — Production readiness and optional advanced features
+- [ ] Database integration/security tests, penetration test and accessibility audit.
+- [ ] Institute pilot, load test, monitoring, incident runbooks and measured SLOs.
+- [ ] Backup restore drill and documented RPO/RTO.
+- [ ] Privacy/tax professional review and data-retention implementation.
+- [ ] PWA/offline, OMR (after accuracy pilot), supported-subset QTI, and optional payment/messaging/AI/proctoring adapters.
 
 ## Release gates
 
-Each phase requires passing module tests, authorization tests and relevant security checks. Production launch additionally requires an institute pilot, privacy/tax professional review, penetration testing, measured load targets, backup restore drill, RPO/RTO definition and incident-response readiness.
+Production launch is blocked until all P0 workflows pass tests, tenant isolation is verified, no critical/high vulnerabilities remain, institute pilot sign-off is recorded, privacy/tax review is completed, load targets are measured, backups are restored successfully and incident response is ready.
