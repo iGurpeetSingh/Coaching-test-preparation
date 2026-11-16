@@ -1,0 +1,38 @@
+.directory-page { display: grid; gap: 20px; }
+.directory-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.directory-eyebrow { color: #7b71d7; font-size: 10px; font-weight: 800; letter-spacing: 1.4px; }
+.directory-heading h2 { margin: 7px 0 5px; color: #25263b; font-size: 25px; }
+.directory-heading p { margin: 0; color: #85879a; font-size: 13px; }
+.directory-total { display: grid; gap: 2px; text-align: right; }
+.directory-total strong { color: #272942; font-size: 27px; }
+.directory-total span, .directory-muted { color: #9294a4; font-size: 11px; }
+.directory-toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.directory-search { width: min(100%, 420px); height: 42px; display: flex; align-items: center; gap: 9px; padding: 0 13px; border: 1px solid #e7e8ef; border-radius: 10px; background: #fff; color: #8a8c9d; }
+.directory-search input { width: 100%; border: 0; outline: 0; background: transparent; color: #292b40; font: inherit; font-size: 12px; }
+.directory-create-form { display: grid; gap: 15px; padding: 19px; border: 1px solid #e9eaf1; border-radius: 13px; background: #fff; }
+.directory-form-title { display: grid; gap: 3px; }
+.directory-form-title strong { color: #303249; font-size: 14px; }
+.directory-form-title span { color: #8c8e9f; font-size: 11px; }
+.directory-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.directory-fields label { display: grid; gap: 6px; min-width: 0; color: #54566b; font-size: 11px; font-weight: 700; }
+.directory-fields input, .directory-fields select { width: 100%; min-width: 0; height: 38px; box-sizing: border-box; border: 1px solid #e3e5ed; border-radius: 8px; padding: 0 9px; background: #fff; color: #303247; font: inherit; font-size: 12px; }
+.directory-primary { justify-self: start; min-height: 38px; padding: 0 16px; border: 0; border-radius: 8px; background: #6558d3; color: white; font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
+.directory-primary:disabled { opacity: .55; cursor: not-allowed; }
+.directory-table-card { overflow: hidden; border: 1px solid #e9eaf1; border-radius: 13px; background: #fff; }
+.directory-table-scroll { width: 100%; overflow-x: auto; }
+.directory-table-card table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+.directory-table-card th { padding: 13px 15px; border-bottom: 1px solid #eff0f4; color: #8d8fa0; font-size: 9px; letter-spacing: .8px; text-align: left; }
+.directory-table-card td { padding: 14px 15px; border-bottom: 1px solid #f1f2f6; color: #55576b; font-size: 11px; }
+.directory-table-card td strong, .directory-table-card td small { display: block; }
+.directory-table-card td strong { color: #292b41; font-size: 12px; }
+.directory-table-card td small { margin-top: 4px; color: #9a9bab; font-size: 10px; }
+.directory-status { display: inline-flex; padding: 5px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+.directory-status.active { color: #18794e; background: #eaf7ef; }
+.directory-status.inactive { color: #8b5d15; background: #fff5df; }
+.directory-row-action { border: 0; background: transparent; color: #665bd0; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.directory-empty { padding: 28px 15px; color: #9698a7; font-size: 12px; text-align: center; }
+.directory-alert { padding: 11px 13px; border-radius: 9px; font-size: 12px; }
+.directory-alert.error { color: #a52b22; background: #fff0ef; }
+.directory-alert.success { color: #18794e; background: #eaf7ef; }
+@media (max-width: 1000px) { .directory-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .directory-heading { align-items: flex-start; } .directory-total { text-align: left; } .directory-fields { grid-template-columns: 1fr; } }
