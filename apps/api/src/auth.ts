@@ -119,25 +119,25 @@ authRouter.post("/login", loginLimiter, async (request, response, next) => {
     }
 
     const result = tenantSlug
-      ? await sql<any>\`
+      ? await sql<any>`
           SELECT u.id AS user_id, u.email, u.full_name, u.password_hash,
                  m.membership_id AS membership_id, t.id AS tenant_id, t.name AS tenant_name, t.slug AS tenant_slug
           FROM users u
           JOIN login_membership_directory m ON m.user_id = u.id AND m.membership_status = 'active'
           JOIN tenants t ON t.id = m.tenant_id AND t.status = 'active'
-          WHERE u.email_normalized = \${email} AND u.is_active = true AND t.slug = \${tenantSlug}
+          WHERE u.email_normalized = ${email} AND u.is_active = true AND t.slug = ${tenantSlug}
           LIMIT 2
-        \`.execute(db)
-      : await sql<any>\`
+        `.execute(db)
+      : await sql<any>`
           SELECT u.id AS user_id, u.email, u.full_name, u.password_hash,
                  m.membership_id AS membership_id, t.id AS tenant_id, t.name AS tenant_name, t.slug AS tenant_slug
           FROM users u
           JOIN login_membership_directory m ON m.user_id = u.id AND m.membership_status = 'active'
           JOIN tenants t ON t.id = m.tenant_id AND t.status = 'active'
-          WHERE u.email_normalized = \${email} AND u.is_active = true
+          WHERE u.email_normalized = ${email} AND u.is_active = true
           ORDER BY t.name
           LIMIT 2
-        \`.execute(db);
+        `.execute(db);
 
     const memberships = result.rows;
     if (memberships.length === 0) {
@@ -164,13 +164,13 @@ authRouter.post("/login", loginLimiter, async (request, response, next) => {
     const csrfToken = randomBytes(32).toString("base64url");
     const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
     await withTenant(user.tenant_id, async (trx) => {
-      await sql\`
+      await sql`
       INSERT INTO user_sessions (tenant_id, membership_id, token_hash, csrf_hash, expires_at, ip_address, user_agent)
       VALUES (
-        \${user.tenant_id}, \${user.membership_id}, \${hash(sessionToken)}, \${hash(csrfToken)},
-        \${expiresAt.toISOString()}, \${request.ip || null}, \${request.header("user-agent")?.slice(0, 500) || null}
+        ${user.tenant_id}, ${user.membership_id}, ${hash(sessionToken)}, ${hash(csrfToken)},
+        ${expiresAt.toISOString()}, ${request.ip || null}, ${request.header("user-agent")?.slice(0, 500) || null}
       )
-    \`.execute(trx);
+    `.execute(trx);
     });
 
     setSessionCookie(response, sessionToken);
@@ -217,16 +217,16 @@ export async function requireAuth(request: Request, response: Response, next: Ne
       return;
     }
 
-    const identityResult = await withTenant(session.tenant_id, async (trx) => sql<any>\`
+    const identityResult = await withTenant(session.tenant_id, async (trx) => sql<any>`
       SELECT u.id AS user_id, u.email, u.full_name, u.is_active AS user_active,
              m.status AS membership_status, t.name AS tenant_name, t.slug AS tenant_slug,
              t.status AS tenant_status
       FROM memberships m
       JOIN users u ON u.id = m.user_id
       JOIN tenants t ON t.id = m.tenant_id
-      WHERE m.id = \${session.membership_id} AND m.tenant_id = \${session.tenant_id}
+      WHERE m.id = ${session.membership_id} AND m.tenant_id = ${session.tenant_id}
       LIMIT 1
-    \`.execute(trx));
+    `.execute(trx));
     const identity = identityResult.rows[0];
     if (!identity || !identity.user_active || identity.membership_status !== "active" || identity.tenant_status !== "active") {
       clearSessionCookies(response);
@@ -273,16 +273,16 @@ export function requirePermission(permission: string) {
       if (!request.permissionSet) {
         const auth = request.auth;
         const access = await withTenant(auth.tenantId, async (trx) => {
-          const roles = await sql<{ permission_key: string }>\`
+          const roles = await sql<{ permission_key: string }>`
             SELECT DISTINCT rp.permission_key
             FROM membership_roles mr
             JOIN role_permissions rp ON rp.tenant_id = mr.tenant_id AND rp.role_id = mr.role_id
-            WHERE mr.tenant_id = \${auth.tenantId} AND mr.membership_id = \${auth.membershipId}
-          \`.execute(trx);
-          const branchRows = await sql<{ branch_id: string }>\`
+            WHERE mr.tenant_id = ${auth.tenantId} AND mr.membership_id = ${auth.membershipId}
+          `.execute(trx);
+          const branchRows = await sql<{ branch_id: string }>`
             SELECT branch_id FROM membership_branch_access
-            WHERE tenant_id = \${auth.tenantId} AND membership_id = \${auth.membershipId}
-          \`.execute(trx);
+            WHERE tenant_id = ${auth.tenantId} AND membership_id = ${auth.membershipId}
+          `.execute(trx);
           return {
             permissions: new Set(roles.rows.map((row) => row.permission_key)),
             branches: branchRows.rows.map((row) => row.branch_id)
@@ -332,32 +332,32 @@ authRouter.get("/me", requireAuth, async (request, response, next) => {
     }
     const auth = request.auth;
     const data = await withTenant(auth.tenantId, async (trx) => {
-      const roleRows = await sql<{ role_key: string; role_name: string }>\`
+      const roleRows = await sql<{ role_key: string; role_name: string }>`
         SELECT r.key AS role_key, r.name AS role_name
         FROM membership_roles mr
         JOIN roles r ON r.tenant_id = mr.tenant_id AND r.id = mr.role_id
-        WHERE mr.tenant_id = \${auth.tenantId} AND mr.membership_id = \${auth.membershipId}
-      \`.execute(trx);
-      const permissionRows = await sql<{ permission_key: string }>\`
+        WHERE mr.tenant_id = ${auth.tenantId} AND mr.membership_id = ${auth.membershipId}
+      `.execute(trx);
+      const permissionRows = await sql<{ permission_key: string }>`
         SELECT DISTINCT rp.permission_key
         FROM membership_roles mr
         JOIN role_permissions rp ON rp.tenant_id = mr.tenant_id AND rp.role_id = mr.role_id
-        WHERE mr.tenant_id = \${auth.tenantId} AND mr.membership_id = \${auth.membershipId}
-      \`.execute(trx);
-      const branches = await sql<{ id: string; name: string; branch_code: string }>\`
+        WHERE mr.tenant_id = ${auth.tenantId} AND mr.membership_id = ${auth.membershipId}
+      `.execute(trx);
+      const branches = await sql<{ id: string; name: string; branch_code: string }>`
         SELECT b.id, b.name, b.branch_code
         FROM branches b
         LEFT JOIN membership_branch_access mba
-          ON mba.tenant_id = b.tenant_id AND mba.branch_id = b.id AND mba.membership_id = \${auth.membershipId}
-        WHERE b.tenant_id = \${auth.tenantId} AND b.is_active = true
+          ON mba.tenant_id = b.tenant_id AND mba.branch_id = b.id AND mba.membership_id = ${auth.membershipId}
+        WHERE b.tenant_id = ${auth.tenantId} AND b.is_active = true
           AND (mba.membership_id IS NOT NULL OR EXISTS (
             SELECT 1 FROM membership_roles mr
             JOIN role_permissions rp ON rp.tenant_id = mr.tenant_id AND rp.role_id = mr.role_id
-            WHERE mr.tenant_id = \${auth.tenantId} AND mr.membership_id = \${auth.membershipId}
+            WHERE mr.tenant_id = ${auth.tenantId} AND mr.membership_id = ${auth.membershipId}
               AND rp.permission_key IN ('enquiries.read_all','branches.manage')
           ))
         ORDER BY b.name
-      \`.execute(trx);
+      `.execute(trx);
       return {
         roles: roleRows.rows,
         permissions: permissionRows.rows.map((row) => row.permission_key),

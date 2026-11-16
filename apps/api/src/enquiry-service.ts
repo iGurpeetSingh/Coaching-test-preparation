@@ -64,13 +64,13 @@ export async function getEnquiry(
   enquiryId: string,
   includeArchived = false
 ): Promise<EnquiryRow> {
-  const result = await sql<EnquiryRow>\`
+  const result = await sql<EnquiryRow>`
     SELECT *
     FROM enquiries
-    WHERE tenant_id = \${tenantId} AND id = \${enquiryId}
-      AND (\${includeArchived} = true OR archived_at IS NULL)
+    WHERE tenant_id = ${tenantId} AND id = ${enquiryId}
+      AND (${includeArchived} = true OR archived_at IS NULL)
     LIMIT 1
-  \`.execute(trx);
+  `.execute(trx);
   const enquiry = result.rows[0];
   if (!enquiry) throw new ApiError(404, "ENQUIRY_NOT_FOUND", "Enquiry was not found.");
   return enquiry;
@@ -94,14 +94,14 @@ export async function addActivity(
   description?: string | null,
   metadata: Record<string, unknown> = {}
 ): Promise<void> {
-  await sql\`
+  await sql`
     INSERT INTO enquiry_activities
       (tenant_id, enquiry_id, actor_membership_id, activity_type, title, description, metadata)
     VALUES (
-      \${tenantId}, \${enquiryId}, \${actorMembershipId}, \${activityType},
-      \${title}, \${description || null}, \${JSON.stringify(metadata)}::jsonb
+      ${tenantId}, ${enquiryId}, ${actorMembershipId}, ${activityType},
+      ${title}, ${description || null}, ${JSON.stringify(metadata)}::jsonb
     )
-  \`.execute(trx);
+  `.execute(trx);
 }
 
 export async function addAudit(
@@ -114,14 +114,14 @@ export async function addAudit(
   ipAddress: string | null,
   metadata: Record<string, unknown> = {}
 ): Promise<void> {
-  await sql\`
+  await sql`
     INSERT INTO audit_logs
       (tenant_id, actor_membership_id, action, entity_type, entity_id, ip_address, safe_metadata)
     VALUES (
-      \${tenantId}, \${actorMembershipId}, \${action}, \${entityType}, \${entityId},
-      \${ipAddress}, \${JSON.stringify(metadata)}::jsonb
+      ${tenantId}, ${actorMembershipId}, ${action}, ${entityType}, ${entityId},
+      ${ipAddress}, ${JSON.stringify(metadata)}::jsonb
     )
-  \`.execute(trx);
+  `.execute(trx);
 }
 
 export async function assignEnquiry(
@@ -133,19 +133,19 @@ export async function assignEnquiry(
   note?: string
 ): Promise<void> {
   const auth = actorOf(request);
-  const counsellorResult = await sql<any>\`
+  const counsellorResult = await sql<any>`
     SELECT cp.membership_id
     FROM counsellor_profiles cp
     JOIN memberships m ON m.tenant_id = cp.tenant_id AND m.id = cp.membership_id
-    WHERE cp.tenant_id = \${auth.tenantId}
-      AND cp.membership_id = \${membershipId}
+    WHERE cp.tenant_id = ${auth.tenantId}
+      AND cp.membership_id = ${membershipId}
       AND cp.is_active = true AND m.status = 'active'
       AND (
         EXISTS (
           SELECT 1 FROM membership_branch_access mba
           WHERE mba.tenant_id = cp.tenant_id
             AND mba.membership_id = cp.membership_id
-            AND mba.branch_id = \${enquiry.branch_id}
+            AND mba.branch_id = ${enquiry.branch_id}
         )
         OR EXISTS (
           SELECT 1 FROM membership_roles mr
@@ -156,30 +156,30 @@ export async function assignEnquiry(
         )
       )
     LIMIT 1
-  \`.execute(trx);
+  `.execute(trx);
   if (counsellorResult.rows.length === 0) {
     throw new ApiError(400, "COUNSELLOR_UNAVAILABLE", "Select an active counsellor who has access to this branch.");
   }
 
   const previous = enquiry.assigned_to_membership_id;
-  await sql\`
+  await sql`
     UPDATE enquiries
-    SET assigned_to_membership_id = \${membershipId},
+    SET assigned_to_membership_id = ${membershipId},
         status_key = CASE WHEN status_key = 'new' THEN 'assigned' ELSE status_key END,
-        updated_by_membership_id = \${auth.membershipId},
+        updated_by_membership_id = ${auth.membershipId},
         updated_at = now(),
         row_version = row_version + 1
-    WHERE tenant_id = \${auth.tenantId} AND id = \${enquiry.id}
-  \`.execute(trx);
+    WHERE tenant_id = ${auth.tenantId} AND id = ${enquiry.id}
+  `.execute(trx);
 
-  await sql\`
+  await sql`
     INSERT INTO enquiry_assignments
       (tenant_id, enquiry_id, from_membership_id, to_membership_id, assigned_by_membership_id, assignment_type, note)
     VALUES (
-      \${auth.tenantId}, \${enquiry.id}, \${previous}, \${membershipId},
-      \${auth.membershipId}, \${assignmentType}, \${note || null}
+      ${auth.tenantId}, ${enquiry.id}, ${previous}, ${membershipId},
+      ${auth.membershipId}, ${assignmentType}, ${note || null}
     )
-  \`.execute(trx);
+  `.execute(trx);
 
   await addActivity(
     trx, auth.tenantId, enquiry.id, auth.membershipId, "assigned",
@@ -200,12 +200,12 @@ export async function chooseRoundRobinCounsellor(
   enquiry: EnquiryRow
 ): Promise<string> {
   const auth = actorOf(request);
-  const settings = await sql<{ round_robin_mode: string }>\`
+  const settings = await sql<{ round_robin_mode: string }>`
     SELECT round_robin_mode FROM tenant_enquiry_settings
-    WHERE tenant_id = \${auth.tenantId}
-  \`.execute(trx);
+    WHERE tenant_id = ${auth.tenantId}
+  `.execute(trx);
   const mode = settings.rows[0]?.round_robin_mode || "least_loaded";
-  const candidates = await sql<{ membership_id: string }>\`
+  const candidates = await sql<{ membership_id: string }>`
     SELECT cp.membership_id
     FROM counsellor_profiles cp
     JOIN memberships m ON m.tenant_id = cp.tenant_id AND m.id = cp.membership_id
@@ -222,14 +222,14 @@ export async function chooseRoundRobinCounsellor(
       FROM enquiry_assignments ea
       WHERE ea.tenant_id = cp.tenant_id AND ea.to_membership_id = cp.membership_id
     ) last_assignment ON true
-    WHERE cp.tenant_id = \${auth.tenantId}
+    WHERE cp.tenant_id = ${auth.tenantId}
       AND cp.is_active = true AND m.status = 'active'
       AND (
         EXISTS (
           SELECT 1 FROM membership_branch_access mba
           WHERE mba.tenant_id = cp.tenant_id
             AND mba.membership_id = cp.membership_id
-            AND mba.branch_id = \${enquiry.branch_id}
+            AND mba.branch_id = ${enquiry.branch_id}
         )
         OR EXISTS (
           SELECT 1 FROM membership_roles mr
@@ -240,11 +240,11 @@ export async function chooseRoundRobinCounsellor(
         )
       )
     ORDER BY
-      CASE WHEN \${mode} = 'round_robin' THEN 0 ELSE (COALESCE(workload.open_count, 0)::numeric / cp.capacity) END ASC,
+      CASE WHEN ${mode} = 'round_robin' THEN 0 ELSE (COALESCE(workload.open_count, 0)::numeric / cp.capacity) END ASC,
       last_assignment.last_assigned_at ASC NULLS FIRST,
       cp.created_at ASC
     FOR UPDATE OF cp
-  \`.execute(trx);
+  `.execute(trx);
   const selected = candidates.rows[0]?.membership_id;
   if (!selected) throw new ApiError(409, "NO_ACTIVE_COUNSELLOR", "No active counsellor is available for this branch.");
   return selected;

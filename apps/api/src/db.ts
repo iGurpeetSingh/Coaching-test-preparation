@@ -31,14 +31,14 @@ export async function withTenant<T>(
   if (!tenantId) throw new Error("Tenant context is required.");
   return db.transaction().execute(async (trx) => {
     // Transaction-local context is reset automatically before a pooled connection is reused.
-    await sql\`select set_config('app.tenant_id', \${tenantId}, true)\`.execute(trx);
+    await sql`select set_config('app.tenant_id', ${tenantId}, true)`.execute(trx);
     return operation(trx);
   });
 }
 
 export async function checkDatabase(): Promise<boolean> {
   try {
-    await sql\`select 1\`.execute(db);
+    await sql`select 1`.execute(db);
     return true;
   } catch {
     return false;
