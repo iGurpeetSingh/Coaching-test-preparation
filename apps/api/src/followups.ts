@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { sql } from "kysely";
-import { requireAuth, requireCsrf, requirePermission, assertBranch } from "./auth.js";
+import { requireAuth, requireCsrf, requirePermission } from "./auth.js";
 import { withTenant } from "./db.js";
-import { ApiError, actorOf, getEnquiry, assertEnquiryScope, addActivity, addAudit, isDuplicatePendingFollowupError } from "./enquiry-service.js";
+import { ApiError, actorOf, getEnquiry, assertEnquiryScope, assertBranch, addActivity, addAudit, isDuplicatePendingFollowupError } from "./enquiry-service.js";
 import { parsePositiveInteger } from "./enquiry-domain.js";
 
 export const followupRouter = Router();
