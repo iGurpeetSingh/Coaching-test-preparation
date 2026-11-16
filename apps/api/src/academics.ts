@@ -255,13 +255,13 @@ academicRouter.get("/students", requirePermission("admissions.read"), async (req
     }
     const where = sql.join(conditions, sql` AND `);
     const data = await withTenant(auth.tenantId, async (trx) => {
-      const count = await sql`
+      const count = await sql<{ total: number }>`
         SELECT count(DISTINCT s.id)::integer AS total
         FROM students s
         JOIN admissions a ON a.tenant_id = s.tenant_id AND a.student_id = s.id
         WHERE ${where}
       `.execute(trx);
-      const rows = await sql`
+      const rows = await sql<Record<string, unknown>>`
         SELECT * FROM (
           SELECT DISTINCT ON (s.id)
             s.id, s.student_number, s.full_name, s.mobile, s.email,
