@@ -6,7 +6,7 @@ type Paper = {
   id: string; paper_code: string; title: string; subject_name: string;
   duration_minutes: number; starts_at: string; ends_at: string;
   instructions: string | null; total_marks: number; question_count: number;
-  batch_name: string; attempt_id: string | null; attempt_status: string | null;
+  status: string; batch_name: string; attempt_id: string | null; attempt_status: string | null;
   deadline_at: string | null; submitted_at: string | null;
 };
 type QuestionOption = { id: string; text: string };
