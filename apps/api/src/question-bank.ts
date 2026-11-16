@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { sql } from "kysely";
 import { requireAuth, requireCsrf, requirePermission } from "./auth.js";
@@ -159,6 +160,9 @@ questionBankRouter.get("/questions", requirePermission("question_bank.read"), as
     const conditions = [sql`q.tenant_id=${auth.tenantId}`];
     if (status) {
       if (!["draft", "review", "published", "archived"].includes(status)) throw new ApiError(400, "INVALID_STATUS", "Question status is invalid.");
+      if (status !== "published" && !request.permissionSet?.has("question_bank.manage")) {
+        throw new ApiError(403, "FORBIDDEN", "You can only view published questions.");
+      }
       conditions.push(sql`q.status=${status}`);
     } else if (!request.permissionSet?.has("question_bank.manage")) {
       conditions.push(sql`q.status='published'`);
@@ -189,7 +193,7 @@ questionBankRouter.post("/questions", requirePermission("question_bank.manage"),
   try {
     const auth = actorOf(request);
     const topicId = uuid(request.body?.topicId, "Topic");
-    const questionCode = (text(request.body?.questionCode, "Question code", 48) || ("Q-" + crypto.randomUUID().slice(0, 8))).toUpperCase();
+    const questionCode = (text(request.body?.questionCode, "Question code", 48) || ("Q-" + randomUUID().slice(0, 8))).toUpperCase();
     const type = text(request.body?.questionType, "Question type", 24, true)!;
     if (!["single_choice", "multiple_choice", "true_false", "short_answer", "long_answer"].includes(type)) {
       throw new ApiError(400, "INVALID_QUESTION_TYPE", "Question type is not supported.");
