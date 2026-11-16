@@ -1,31 +1,63 @@
-# Student Exam Papers Connection
+# Student Exam Papers — Local Demo Workflow
 
-The Tests & Exams page is a student-facing paper library. It does not create, edit, publish, or store draft papers.
+The Student Exam Portal and Paper Management now run entirely inside this Coaching repository. The paper workflow does not call the Python/Guri repository, Render, or an external exam API.
 
-## Frontend API configuration
+## Where papers are created
 
-Set the Vite environment variable in the Vercel project:
+Open the Coaching workspace and choose **Paper** in the sidebar. The Paper Management screen supports:
 
-```text
-VITE_EXAMS_API_URL=https://<deployed-guri-api-host>
-```
+- Separate Objective Exam and Written Exam paper modes.
+- Title, subject, class/batch, scheduled date/time, duration and student instructions.
+- Pasted question-paper text and parser validation.
+- Teacher preview, answer-key visibility and print/PDF preview.
+- Save Draft, Publish, Edit/Load and Unpublish.
+- Student submissions, automatic Objective scoring and Written marking.
 
-Use the base URL only (no `/api` suffix and no trailing slash). Redeploy the website after setting the variable.
+## Question format and validation
 
-## Runtime behavior
+Objective format:
 
-- The page always renders separate Objective Exam and Written Exam cards.
-- It requests `GET /api/exams/published` from the Python FastAPI service when the page opens or the student clicks Refresh papers.
-- The response contains only published paper objects. A missing/unpublished paper remains Coming Soon.
-- A published paper with a future `startAt` remains Coming Soon and its questions are not shown.
-- Once the scheduled time is reached, the page shows the published paper and allows the student to view its questions.
-- No paper is read from browser LocalStorage.
-- The website does not receive objective answer keys or written marking guides.
+- Exactly 50 questions.
+- Four options for every question: A), B), C), D).
+- One answer-key line per question: `Answer: A`, `Answer: B`, `Answer: C`, or `Answer: D`.
+- 2 marks per question, total 100.
 
-The Python backend stores source files in its private GitHub repository under `data/exams/`. No database is used by this paper publishing flow.
+Written format:
 
-## Start and submit flow
+- Each question has a `Marks: 2`, `Marks: 4`, or `Marks: 6` line.
+- The sum of all written-question marks must equal 100.
+- If one pasted document contains both MCQs and Written questions, the Objective parser ignores numbered blocks without options/answer keys, and the Written parser ignores MCQ blocks.
 
-When the scheduled start time arrives, the card displays **Start Exam** until the end of the configured duration. Starting requires the student's name and roll number (self-entered at this stage; there is no authenticated student session in the current project). The browser requests a server-created attempt and receives a private receipt token. The exam timer uses the server-provided deadline.
+The parser does not silently change the paper's question count or marks. A validation error must be fixed before saving or publishing.
 
-Objective responses are submitted to the Python service and scored server-side. Written responses are submitted to the same service and saved with an `awaiting_marking` status. Attempt JSON files live in the private GitHub repository, not in browser LocalStorage and not in a database. The student receives a result receipt after submission.
+## Publish and student visibility
+
+- Publish makes the latest published paper of that type available in **Tests & Exams**.
+- Objective and Written publish states are independent.
+- A saved draft does not replace an already-published paper.
+- A new published paper replaces the previous published version of the same type; historical attempts keep their own paper snapshot.
+- A future scheduled paper shows **Coming Soon**.
+- During the scheduled exam window, the card shows **Start Exam**.
+- When the scheduled duration ends, the paper shows **Exam Closed**.
+- The Student Exam Portal refreshes the list automatically and also has a manual Refresh papers control.
+
+## Student attempts and results
+
+Students enter their name and roll number in demo mode. Answers are stored as they are entered. The attempt timer uses the stored scheduled deadline.
+
+- Objective attempts are scored automatically using the paper's saved answer key.
+- Written submissions remain **Awaiting teacher evaluation**.
+- The teacher opens **Paper**, enters marks for each written question within that question's maximum marks, and selects **Save marks & publish result**.
+- The student's written result changes to Graded after the teacher saves the marks.
+
+## Demo storage boundary
+
+This is intentionally a same-browser demonstration:
+
+- Papers and attempts are stored in that browser profile's `localStorage`.
+- Refreshing the page or navigating between Paper and Tests & Exams keeps the records.
+- Other tabs on the same origin receive updates.
+- A different phone, computer, browser profile or incognito session has separate storage and will not see those records.
+- Browser storage can be cleared and is not a secure production store.
+
+No Python repository, Android Publish button, Render URL, Vercel API environment variable or separate paper service is needed for this demo. Cross-device or multi-user synchronization would require this Coaching application to add its own authenticated backend storage in a later phase.
