@@ -111,6 +111,12 @@ async function main() {
       ON CONFLICT DO NOTHING
     \`.execute(trx);
 
+    await sql`
+      INSERT INTO tenant_enquiry_settings (tenant_id)
+      VALUES (${tenantId})
+      ON CONFLICT (tenant_id) DO NOTHING
+    `.execute(trx);
+
     const sourceRows = [
       ["walk_in", "Walk-in"], ["phone", "Phone Call"], ["website", "Website"],
       ["whatsapp", "WhatsApp"], ["referral", "Referral"], ["social_media", "Social Media"],
