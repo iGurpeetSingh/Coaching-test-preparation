@@ -1,9 +1,9 @@
-import { Router } from "express";
-import { requireAuth, requireCsrf, requirePermission, assertBranch } from "./auth.js";
+import { Router, type Request } from "express";
+import { requireAuth, requireCsrf, requirePermission } from "./auth.js";
 import { withTenant } from "./db.js";
 import { actorOf } from "./enquiry-service.js";
 import { sql, type RawBuilder } from "kysely";
-import { ApiError, getEnquiry, assertEnquiryScope, addActivity, addAudit, assignEnquiry, chooseRoundRobinCounsellor } from "./enquiry-service.js";
+import { ApiError, getEnquiry, assertEnquiryScope, assertBranch, addActivity, addAudit, assignEnquiry, chooseRoundRobinCounsellor } from "./enquiry-service.js";
 import { canTransition, normalizePhone, validatePhone, normalizePersonName, parsePositiveInteger, validateFee } from "./enquiry-domain.js";
 
 export const enquiryRouter = Router();
@@ -17,7 +17,7 @@ enquiryRouter.get("/enquiries/summary", requirePermission("enquiries.read"), asy
   try {
     const auth = actorOf(request);
     const result = await withTenant(auth.tenantId, async (trx) => {
-      return sql`SELECT count(*)::integer AS total FROM enquiries WHERE tenant_id = ${auth.tenantId} AND archived_at IS NULL`.execute(trx);
+      return sql<{ total: number }>`SELECT count(*)::integer AS total FROM enquiries WHERE tenant_id = ${auth.tenantId} AND archived_at IS NULL`.execute(trx);
     });
     response.json({ total: Number(result.rows[0]?.total || 0) });
   } catch (error) {
