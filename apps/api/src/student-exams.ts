@@ -309,7 +309,7 @@ studentExamRouter.post("/student/attempts/:id/submit", requirePermission("studen
         UPDATE exam_attempts
         SET status=${finalStatus}, submitted_at=${clock.rows[0].server_now},
             submit_reason=${deadlinePassed ? "deadline" : "manual"},
-            score=${objectiveScore}, correct_count=${correct},
+            objective_score=${objectiveScore}, score=${objectiveScore}, correct_count=${correct},
             incorrect_count=${incorrect}, unanswered_count=${unanswered},
             graded_at=CASE WHEN ${finalStatus}='graded' THEN now() ELSE NULL END,
             updated_at=now()
