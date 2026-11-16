@@ -449,7 +449,7 @@ DECLARE
 BEGIN
   FOREACH table_name IN ARRAY ARRAY[
     'branches','memberships','roles','role_permissions','membership_roles',
-    'membership_branch_access','courses','batches','fee_structures',
+    'membership_branch_access','user_sessions','courses','batches','fee_structures',
     'counsellor_profiles','enquiry_sources','enquiry_statuses','tenant_enquiry_settings',
     'enquiry_status_transitions','enquiry_id_sequences','enquiries',
     'enquiry_assignments','follow_ups','enquiry_activities','students',
@@ -458,10 +458,17 @@ BEGIN
   LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', table_name);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', table_name);
-    EXECUTE format(
-      'CREATE POLICY tenant_isolation ON %I USING (tenant_id = nullif(current_setting(''app.tenant_id'', true), '''')::uuid) WITH CHECK (tenant_id = nullif(current_setting(''app.tenant_id'', true), '''')::uuid)',
-      table_name
-    );
+    IF table_name = 'user_sessions' THEN
+      EXECUTE format(
+        'CREATE POLICY tenant_isolation ON %I USING (tenant_id = nullif(current_setting(''app.tenant_id'', true), '''')::uuid OR token_hash = current_setting(''app.session_token_hash'', true)) WITH CHECK (tenant_id = nullif(current_setting(''app.tenant_id'', true), '''')::uuid)',
+        table_name
+      );
+    ELSE
+      EXECUTE format(
+        'CREATE POLICY tenant_isolation ON %I USING (tenant_id = nullif(current_setting(''app.tenant_id'', true), '''')::uuid) WITH CHECK (tenant_id = nullif(current_setting(''app.tenant_id'', true), '''')::uuid)',
+        table_name
+      );
+    END IF;
   END LOOP;
 END $$;
 
