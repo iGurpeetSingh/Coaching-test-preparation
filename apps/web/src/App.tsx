@@ -103,8 +103,8 @@ function App() {
             <button onClick={() => setActive("Help & Support")}>Open help centre →</button>
           </div>
           <div className="profile-mini">
-            <div className="avatar">AD</div>
-            <div><strong>Institute Admin</strong><span>Owner account</span></div>
+            <div className="avatar">{initials}</div>
+            <div><strong>{displayName}</strong><span>{currentUser.user.tenantName}</span></div>
             <span className="profile-menu">•••</span>
           </div>
         </div>
@@ -116,7 +116,8 @@ function App() {
           <div className="top-actions">
             <label className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search tests..." aria-label="Search tests" /></label>
             <button className="icon-button" aria-label="Notifications">♧</button>
-            <div className="top-user"><div className="avatar">AD</div><div><strong>Admin</strong><span>Institute Owner</span></div></div>
+            <div className="top-user"><div className="avatar">{initials}</div><div><strong>{displayName}</strong><span>{currentUser.user.tenantName}</span></div></div>
+            <button className="text-button" onClick={() => void handleSignOut()}>Sign out</button>
           </div>
         </header>
 
@@ -124,7 +125,7 @@ function App() {
           {active !== "Tests & Exams" && active !== "Paper" && <div className="page-heading">
             <div>
               <div className="eyebrow">INSTITUTE WORKSPACE</div>
-              <h1>{active === "Dashboard" ? "Good morning, {displayName} 👋" : active}</h1>
+              <h1>{active === "Dashboard" ? "Good morning, " + displayName + " 👋" : active}</h1>
               <p>{active === "Dashboard" ? "Here’s what’s happening at your institute today." : "Manage " + active.toLowerCase() + " for your institute."}</p>
             </div>
             <button className="primary-button" onClick={() => setActive("Tests & Exams")}>View Exams →</button>
