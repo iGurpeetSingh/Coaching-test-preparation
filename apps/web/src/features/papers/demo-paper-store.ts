@@ -144,6 +144,7 @@ export function createDemoAttempt(
   if (now < startsAt) throw new Error("This exam is scheduled for " + new Date(startsAt).toLocaleString() + ".");
   if (now >= startsAt + paper.durationMinutes * 60_000) throw new Error("The scheduled exam window has ended.");
 
+  const scheduledEnd = startsAt + paper.durationMinutes * 60_000;
   const attempt: DemoAttempt = {
     attemptId: makeId("attempt"),
     paperId: paper.id,
@@ -151,7 +152,7 @@ export function createDemoAttempt(
     studentName: studentName.trim(),
     rollNumber: rollNumber.trim(),
     startedAt: new Date(now).toISOString(),
-    expiresAt: new Date(now + paper.durationMinutes * 60_000).toISOString(),
+    expiresAt: new Date(Math.min(now + paper.durationMinutes * 60_000, scheduledEnd)).toISOString(),
     answers: {},
     status: "in_progress",
     score: null,
