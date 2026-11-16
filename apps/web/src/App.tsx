@@ -1,7 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import TestManagement from "./features/tests/TestManagement";
 import StudentExamLibrary from "./features/tests/StudentExamLibrary";
 import PaperBuilder from "./features/papers/PaperBuilder";
+import AuthScreen from "./features/auth/AuthScreen";
+import DirectoryPage from "./features/management/DirectoryPage";
+import { bootstrapCsrf, getCurrentUser, signOut, type CurrentUserResponse } from "./lib/api";
 
 const workspaceLinks = [
   ["Dashboard", "⌂"],
@@ -28,10 +31,51 @@ const upcomingTests = [
 function App() {
   const [active, setActive] = useState("Dashboard");
   const [query, setQuery] = useState("");
+  const [authLoading, setAuthLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<CurrentUserResponse | null>(null);
+
+  useEffect(() => {
+    let activeRequest = true;
+    (async () => {
+      try {
+        await bootstrapCsrf();
+        const session = await getCurrentUser();
+        if (activeRequest) setCurrentUser(session);
+      } catch {
+        if (activeRequest) setCurrentUser(null);
+      } finally {
+        if (activeRequest) setAuthLoading(false);
+      }
+    })();
+    return () => { activeRequest = false; };
+  }, []);
+
+  async function handleSignedIn() {
+    const session = await getCurrentUser();
+    setCurrentUser(session);
+    setActive("Dashboard");
+  }
+
+  async function handleSignOut() {
+    try { await signOut(); } catch { /* The local workspace view is cleared even if the network is unavailable. */ }
+    setCurrentUser(null);
+    setQuery("");
+    setActive("Dashboard");
+  }
   const filteredTests = useMemo(
     () => upcomingTests.filter((test) => test.name.toLowerCase().includes(query.toLowerCase())),
     [query]
   );
+
+  if (authLoading) {
+    return <div className="auth-page"><div className="auth-card">Loading secure institute session…</div></div>;
+  }
+  if (!currentUser) {
+    return <AuthScreen onSignedIn={handleSignedIn} />;
+  }
+
+  const displayName = currentUser.user.fullName || "Institute User";
+  const initials = displayName.split(/\\s+/).map((part) => part[0]).slice(0, 2).join("").toUpperCase();
 
   const renderNav = (items: ReadonlyArray<readonly [string, string]>) => items.map(([label, icon]) => (
     <button key={label} className={active === label ? "nav-item active" : "nav-item"} onClick={() => setActive(label)}>
@@ -80,7 +124,7 @@ function App() {
           {active !== "Tests & Exams" && active !== "Paper" && <div className="page-heading">
             <div>
               <div className="eyebrow">INSTITUTE WORKSPACE</div>
-              <h1>{active === "Dashboard" ? "Good morning, Admin 👋" : active}</h1>
+              <h1>{active === "Dashboard" ? "Good morning, {displayName} 👋" : active}</h1>
               <p>{active === "Dashboard" ? "Here’s what’s happening at your institute today." : "Manage " + active.toLowerCase() + " for your institute."}</p>
             </div>
             <button className="primary-button" onClick={() => setActive("Tests & Exams")}>View Exams →</button>
@@ -90,6 +134,12 @@ function App() {
             <StudentExamLibrary searchQuery={query} />
           ) : active === "Paper" ? (
             <PaperBuilder onBack={() => setActive("Dashboard")} />
+          ) : active === "Students" || active === "Batches" || active === "Courses" ? (
+            <DirectoryPage
+              module={active}
+              branches={currentUser.branches}
+              permissions={currentUser.permissions}
+            />
           ) : active === "Results" ? (
             <TestManagement onBack={() => setActive("Dashboard")} searchQuery={query} showResultsInitially />
           ) : active !== "Dashboard" && active !== "Tests & Exams" ? (
