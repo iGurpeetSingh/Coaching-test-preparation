@@ -159,7 +159,7 @@ studentExamRouter.post("/student/papers/:id/attempts", requirePermission("studen
       `.execute(trx);
       if (existing.rows[0]) {
         const attempt = existing.rows[0];
-        if (attempt.status === "in_progress" && new Date(attempt.deadline_at) > now) return { attempt, alreadyStarted: true };
+        if (attempt.status === "in_progress") return { attempt, alreadyStarted: true };
         throw new ApiError(409, "ATTEMPT_ALREADY_USED", "An attempt already exists for this examination.");
       }
       const deadline = new Date(Math.min(
