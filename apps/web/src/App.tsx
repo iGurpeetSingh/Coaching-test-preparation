@@ -4,10 +4,12 @@ import StudentExamLibrary from "./features/tests/StudentExamLibrary";
 import PaperBuilder from "./features/papers/PaperBuilder";
 import AuthScreen from "./features/auth/AuthScreen";
 import DirectoryPage from "./features/management/DirectoryPage";
+import EnquiryPage from "./features/admissions/EnquiryPage";
 import { bootstrapCsrf, getCurrentUser, signOut, type CurrentUserResponse } from "./lib/api";
 
 const workspaceLinks = [
   ["Dashboard", "⌂"],
+  ["Enquiries", "↗"],
   ["Students", "♙"],
   ["Batches", "▦"],
   ["Courses", "▤"],
@@ -135,6 +137,8 @@ function App() {
             <StudentExamLibrary searchQuery={query} />
           ) : active === "Paper" ? (
             <PaperBuilder onBack={() => setActive("Dashboard")} />
+          ) : active === "Enquiries" ? (
+            <EnquiryPage branches={currentUser.branches} permissions={currentUser.permissions} />
           ) : active === "Students" || active === "Batches" || active === "Courses" ? (
             <DirectoryPage
               module={active}
