@@ -2,6 +2,8 @@
 
 **Version:** 0.1 · **Status:** Initial implementation baseline
 
+Detailed product workflows are specified in [Business Workflows](BUSINESS-WORKFLOWS.md). Prioritised functional requirements, role permissions and testable acceptance criteria are maintained in [Functional Requirements & Acceptance](FUNCTIONAL-REQUIREMENTS-AND-ACCEPTANCE.md). Market assumptions and competitor patterns are documented in [Industry Research & Competitor Analysis](INDUSTRY-RESEARCH-AND-COMPETITOR-ANALYSIS.md).
+
 ## Product objective
 
 A multi-tenant web platform for coaching institutes that joins administrative and academic workflows with question-bank management, paper generation, online exams and results.
