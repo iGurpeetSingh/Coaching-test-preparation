@@ -381,3 +381,103 @@ enquiryRouter.patch("/enquiries/:id",requirePermission("enquiries.update"),async
     response.json({enquiry:result});
   }catch(error){next(error);}
 });
+
+
+enquiryRouter.patch("/enquiries/:id/status",requirePermission("enquiries.update"),async(request,response,next)=>{
+  try{
+    const auth=actorOf(request);
+    const toStatus=inputText(request.body?.status,"Status",40,true)!;
+    const lostReason=inputText(request.body?.lostReason,"Lost reason",500);
+    const result=await withTenant(auth.tenantId,async(trx)=>{
+      const enquiry=await getEnquiry(trx,auth.tenantId,request.params.id);
+      assertEnquiryScope(request,enquiry);
+      if(toStatus==="converted")throw new ApiError(400,"USE_ADMISSION_CONVERSION","Use admission conversion to mark an enquiry as Converted.");
+      if(toStatus==="lost"&&!lostReason)throw new ApiError(400,"LOST_REASON_REQUIRED","A reason is required when marking an enquiry Lost.");
+      const allowed=await sql`SELECT 1 FROM enquiry_status_transitions WHERE tenant_id=${auth.tenantId} AND from_status_key=${enquiry.status_key} AND to_status_key=${toStatus}`.execute(trx);
+      if(!allowed.rows.length||!canTransition(enquiry.status_key as any,toStatus as any))throw new ApiError(409,"INVALID_STATUS_TRANSITION","Status transition is not allowed.");
+      const updated=await sql<any>`
+        UPDATE enquiries SET status_key=${toStatus},lost_reason=${toStatus==="lost"?lostReason:null},
+          updated_by_membership_id=${auth.membershipId},updated_at=now(),row_version=row_version+1
+        WHERE tenant_id=${auth.tenantId} AND id=${enquiry.id} RETURNING *
+      `.execute(trx);
+      await addActivity(trx,auth.tenantId,enquiry.id,auth.membershipId,"status_changed","Status changed",lostReason,{fromStatus:enquiry.status_key,toStatus});
+      await addAudit(trx,auth.tenantId,auth.membershipId,"enquiry.status_changed","enquiry",enquiry.id,request.ip||null,{fromStatus:enquiry.status_key,toStatus});
+      return updated.rows[0];
+    });
+    response.json({enquiry:result});
+  }catch(error){next(error);}
+});
+
+enquiryRouter.post("/enquiries/:id/assign",requirePermission("enquiries.assign"),async(request,response,next)=>{
+  try{
+    const auth=actorOf(request);
+    const membershipId=inputUuid(request.body?.membershipId,"Counsellor",true)!;
+    const note=inputText(request.body?.note,"Assignment note",500);
+    const result=await withTenant(auth.tenantId,async(trx)=>{
+      const enquiry=await getEnquiry(trx,auth.tenantId,request.params.id);
+      assertBranch(request,enquiry.branch_id);
+      await assignEnquiry(trx,request,enquiry,membershipId,"manual",note||undefined);
+      return getEnquiry(trx,auth.tenantId,enquiry.id);
+    });
+    response.json({enquiry:result});
+  }catch(error){next(error);}
+});
+
+enquiryRouter.post("/enquiries/:id/assign/round-robin",requirePermission("enquiries.assign"),async(request,response,next)=>{
+  try{
+    const auth=actorOf(request);
+    const result=await withTenant(auth.tenantId,async(trx)=>{
+      const enquiry=await getEnquiry(trx,auth.tenantId,request.params.id);
+      assertBranch(request,enquiry.branch_id);
+      const membershipId=await chooseRoundRobinCounsellor(trx,request,enquiry);
+      await assignEnquiry(trx,request,enquiry,membershipId,"round_robin");
+      return getEnquiry(trx,auth.tenantId,enquiry.id);
+    });
+    response.json({enquiry:result});
+  }catch(error){next(error);}
+});
+
+enquiryRouter.post("/enquiries/:id/archive",requirePermission("enquiries.archive"),async(request,response,next)=>{
+  try{
+    const auth=actorOf(request);
+    await withTenant(auth.tenantId,async(trx)=>{
+      const enquiry=await getEnquiry(trx,auth.tenantId,request.params.id);
+      assertEnquiryScope(request,enquiry);
+      await sql`UPDATE enquiries SET archived_at=now(),updated_at=now(),updated_by_membership_id=${auth.membershipId},row_version=row_version+1 WHERE tenant_id=${auth.tenantId} AND id=${enquiry.id}`.execute(trx);
+      await addActivity(trx,auth.tenantId,enquiry.id,auth.membershipId,"archived","Enquiry archived");
+      await addAudit(trx,auth.tenantId,auth.membershipId,"enquiry.archived","enquiry",enquiry.id,request.ip||null);
+    });
+    response.json({ok:true});
+  }catch(error){next(error);}
+});
+
+enquiryRouter.post("/enquiries/:id/restore",requirePermission("enquiries.archive"),async(request,response,next)=>{
+  try{
+    const auth=actorOf(request);
+    await withTenant(auth.tenantId,async(trx)=>{
+      const enquiry=await getEnquiry(trx,auth.tenantId,request.params.id,true);
+      assertBranch(request,enquiry.branch_id);
+      await sql`UPDATE enquiries SET archived_at=NULL,updated_at=now(),updated_by_membership_id=${auth.membershipId},row_version=row_version+1 WHERE tenant_id=${auth.tenantId} AND id=${enquiry.id}`.execute(trx);
+      await addActivity(trx,auth.tenantId,enquiry.id,auth.membershipId,"restored","Enquiry restored");
+      await addAudit(trx,auth.tenantId,auth.membershipId,"enquiry.restored","enquiry",enquiry.id,request.ip||null);
+    });
+    response.json({ok:true});
+  }catch(error){next(error);}
+});
+
+enquiryRouter.post("/enquiries/:id/activities",requirePermission("enquiries.update"),async(request,response,next)=>{
+  try{
+    const auth=actorOf(request);
+    const type=inputText(request.body?.type,"Activity type",30,true)!;
+    if(!["call","whatsapp","email","visit","counselling","demo_scheduled","demo_completed","note"].includes(type))throw new ApiError(400,"INVALID_ACTIVITY_TYPE","Activity type is invalid.");
+    const title=inputText(request.body?.title,"Activity title",180,true)!;
+    const description=inputText(request.body?.description,"Activity remarks",3000);
+    await withTenant(auth.tenantId,async(trx)=>{
+      const enquiry=await getEnquiry(trx,auth.tenantId,request.params.id);
+      assertEnquiryScope(request,enquiry);
+      await addActivity(trx,auth.tenantId,enquiry.id,auth.membershipId,type,title,description);
+      await addAudit(trx,auth.tenantId,auth.membershipId,"enquiry.activity_added","enquiry",enquiry.id,request.ip||null,{type});
+    });
+    response.status(201).json({ok:true});
+  }catch(error){next(error);}
+});
