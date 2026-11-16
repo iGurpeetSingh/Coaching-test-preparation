@@ -1,222 +1,543 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  DEMO_PAPER_EVENT,
+  getDemoAttempts,
+  getDemoPapers,
+  gradeDemoWrittenAttempt,
+  saveDemoPaper,
+  setDemoPaperPublished,
+  type DemoAttempt,
+  type DemoPaper,
+  type ObjectiveQuestion,
+  type PaperType,
+  type WrittenQuestion,
+} from "./demo-paper-store";
 import "./paper-builder.css";
+import "./demo-paper.css";
 
-type Difficulty = "Easy" | "Medium" | "Hard";
-type Question = {
-  id: string;
-  topic: string;
-  difficulty: Difficulty;
+type ParsedPaper = {
+  questions?: ObjectiveQuestion[];
+  writtenQuestions?: WrittenQuestion[];
+  totalMarks: number;
+};
+
+type ObjectiveDraft = {
   prompt: string;
-  options: string[];
-  answer: string;
-  marks: number;
-};
-type BlueprintRule = {
-  topic: string;
-  easy: number;
-  medium: number;
-  hard: number;
+  options: Map<number, string>;
+  correctIndex: number | null;
 };
 
-const questionBank: Question[] = [
-  { id: "PHY-001", topic: "Current Electricity", difficulty: "Easy", prompt: "The SI unit of electric current is:", options: ["Volt", "Ampere", "Ohm", "Watt"], answer: "Ampere", marks: 2 },
-  { id: "PHY-002", topic: "Current Electricity", difficulty: "Easy", prompt: "Which instrument is used to measure electric current?", options: ["Voltmeter", "Ammeter", "Galvanometer only", "Barometer"], answer: "Ammeter", marks: 2 },
-  { id: "PHY-003", topic: "Current Electricity", difficulty: "Medium", prompt: "A 10 Ω resistor is connected to a 5 V source. The current is:", options: ["0.2 A", "0.5 A", "2 A", "5 A"], answer: "0.5 A", marks: 2 },
-  { id: "PHY-004", topic: "Current Electricity", difficulty: "Medium", prompt: "Two resistors of 4 Ω and 6 Ω are connected in series. Their equivalent resistance is:", options: ["2 Ω", "10 Ω", "24 Ω", "1.5 Ω"], answer: "10 Ω", marks: 2 },
-  { id: "PHY-005", topic: "Current Electricity", difficulty: "Hard", prompt: "A wire is stretched to twice its original length, keeping volume constant. Its resistance becomes:", options: ["R/2", "2R", "4R", "R/4"], answer: "4R", marks: 2 },
-  { id: "PHY-006", topic: "Magnetism", difficulty: "Easy", prompt: "The SI unit of magnetic field is:", options: ["Tesla", "Weber", "Henry", "Farad"], answer: "Tesla", marks: 2 },
-  { id: "PHY-007", topic: "Magnetism", difficulty: "Medium", prompt: "The magnetic force on a moving charge is maximum when its velocity is:", options: ["Parallel to the field", "Opposite to the field", "Perpendicular to the field", "Zero"], answer: "Perpendicular to the field", marks: 2 },
-  { id: "PHY-008", topic: "Magnetism", difficulty: "Hard", prompt: "The magnetic field at the centre of a circular current loop is proportional to:", options: ["Radius", "Current divided by radius", "Radius squared", "Resistance only"], answer: "Current divided by radius", marks: 2 },
-  { id: "PHY-009", topic: "Electromagnetic Induction", difficulty: "Easy", prompt: "The phenomenon of producing emf by changing magnetic flux is called:", options: ["Electrolysis", "Induction", "Polarisation", "Rectification"], answer: "Induction", marks: 2 },
-  { id: "PHY-010", topic: "Electromagnetic Induction", difficulty: "Medium", prompt: "According to Lenz's law, induced current opposes the:", options: ["Resistance", "Change causing it", "Conductor length", "Charge carrier"], answer: "Change causing it", marks: 2 },
-  { id: "PHY-011", topic: "Electromagnetic Induction", difficulty: "Hard", prompt: "A coil has 100 turns and flux changes by 0.02 Wb in 0.1 s. The magnitude of induced emf is:", options: ["2 V", "10 V", "20 V", "200 V"], answer: "20 V", marks: 2 },
-  { id: "PHY-012", topic: "Current Electricity", difficulty: "Medium", prompt: "For an ohmic conductor at constant temperature, the V-I graph is:", options: ["A straight line through origin", "A circle", "A parabola", "A horizontal line"], answer: "A straight line through origin", marks: 2 }
-];
+type WrittenDraft = {
+  prompt: string;
+  marks: number | null;
+  containsOptions: boolean;
+};
 
-const initialRules: BlueprintRule[] = [
-  { topic: "Current Electricity", easy: 1, medium: 2, hard: 1 },
-  { topic: "Magnetism", easy: 1, medium: 1, hard: 0 },
-  { topic: "Electromagnetic Induction", easy: 0, medium: 1, hard: 0 }
-];
+const QUESTION_PATTERN = /^(?:Q(?:uestion)?\\s*)?(\\d+)\\s*[.):\\-]\\s*(.+)$/i;
+const OPTION_PATTERN = /^([A-D])\\s*[).:\\-]\\s*(.+)$/i;
+const ANSWER_PATTERN = /^(?:answer|ans|correct\\s*option|उत्तर)\\s*[:=\\-]\\s*([A-D])\\s*$/i;
+const MARKS_PATTERN = /^(?:marks?|अंक)\\s*[:=\\-]\\s*(\\d+)\\s*$/i;
 
-type Props = { initialMode?: "automatic" | "manual"; onBack: () => void };
+function makeId(): string {
+  return "paper_" + (typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Date.now().toString(36));
+}
 
-export default function PaperBuilder({ initialMode = "automatic", onBack }: Props) {
-  const [mode, setMode] = useState<"automatic" | "manual">(initialMode);
-  const [title, setTitle] = useState("Physics Mock Test 01");
-  const [course, setCourse] = useState("Class 12");
-  const subject = "Physics";
+function localDateTime(hoursFromNow = 1): string {
+  const date = new Date(Date.now() + hoursFromNow * 60 * 60 * 1000);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+function toLocalDateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return localDateTime();
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+}
+
+function parseObjective(raw: string): ObjectiveQuestion[] {
+  const drafts: ObjectiveDraft[] = [];
+  let current: ObjectiveDraft | null = null;
+
+  const pushCurrent = () => {
+    if (current && (current.options.size > 0 || current.correctIndex !== null)) drafts.push(current);
+  };
+
+  raw.split(/\\r?\\n/).forEach((rawLine) => {
+    const line = rawLine.trim();
+    if (!line) return;
+    const questionMatch = line.match(QUESTION_PATTERN);
+    const optionMatch = line.match(OPTION_PATTERN);
+    const answerMatch = line.match(ANSWER_PATTERN);
+
+    if (questionMatch) {
+      pushCurrent();
+      current = { prompt: questionMatch[2].trim(), options: new Map(), correctIndex: null };
+    } else if (optionMatch) {
+      if (!current) throw new Error("An option was found before the first numbered question.");
+      current.options.set(optionMatch[1].toUpperCase().charCodeAt(0) - 65, optionMatch[2].trim());
+    } else if (answerMatch) {
+      if (!current) throw new Error("An answer key was found before the first numbered question.");
+      current.correctIndex = answerMatch[1].toUpperCase().charCodeAt(0) - 65;
+    } else if (current && current.options.size === 0) {
+      current.prompt += " " + line;
+    }
+  });
+  pushCurrent();
+
+  if (drafts.length !== 50) {
+    throw new Error("Objective Exam needs exactly 50 objective questions. Found " + drafts.length + ". Check that you pasted all 50 MCQs.");
+  }
+
+  return drafts.map((draft, index) => {
+    if (!draft.prompt.trim()) throw new Error("Question " + (index + 1) + " has no question text.");
+    if (draft.options.size !== 4 || [0, 1, 2, 3].some((key) => !draft.options.get(key))) {
+      throw new Error("Question " + (index + 1) + " must include A), B), C) and D) options.");
+    }
+    if (draft.correctIndex === null) throw new Error("Question " + (index + 1) + " needs an Answer: A/B/C/D line.");
+    return {
+      id: "obj_" + String(index + 1).padStart(2, "0"),
+      prompt: draft.prompt.trim(),
+      options: [0, 1, 2, 3].map((key) => draft.options.get(key) || ""),
+      correctIndex: draft.correctIndex,
+      marks: 2 as const,
+    };
+  });
+}
+
+function parseWritten(raw: string): WrittenQuestion[] {
+  const drafts: WrittenDraft[] = [];
+  let current: WrittenDraft | null = null;
+
+  const pushCurrent = () => {
+    if (current) drafts.push(current);
+  };
+
+  raw.split(/\\r?\\n/).forEach((rawLine) => {
+    const line = rawLine.trim();
+    if (!line) return;
+    const questionMatch = line.match(QUESTION_PATTERN);
+    const optionMatch = line.match(OPTION_PATTERN);
+    const answerMatch = line.match(ANSWER_PATTERN);
+    const marksMatch = line.match(MARKS_PATTERN);
+
+    if (questionMatch) {
+      pushCurrent();
+      current = { prompt: questionMatch[2].trim(), marks: null, containsOptions: false };
+    } else if (optionMatch || answerMatch) {
+      if (current) current.containsOptions = true;
+    } else if (marksMatch) {
+      if (!current) throw new Error("A Marks line was found before the first numbered written question.");
+      current.marks = Number(marksMatch[1]);
+    } else if (current && !current.containsOptions) {
+      current.prompt += " " + line;
+    }
+  });
+  pushCurrent();
+
+  // Ignore MCQ blocks when the same pasted text contains both Objective and Written sections.
+  const writtenDrafts = drafts.filter((draft) => !draft.containsOptions);
+  if (writtenDrafts.length === 0) throw new Error("No written questions found. Add numbered questions with Marks: 2, 4 or 6 lines.");
+
+  let totalMarks = 0;
+  const questions = writtenDrafts.map((draft, index) => {
+    if (!draft.prompt.trim()) throw new Error("Written question " + (index + 1) + " has no question text.");
+    if (draft.marks !== 2 && draft.marks !== 4 && draft.marks !== 6) {
+      throw new Error("Written question " + (index + 1) + " must have Marks: 2, Marks: 4 or Marks: 6.");
+    }
+    totalMarks += draft.marks;
+    return {
+      id: "wrt_" + String(index + 1).padStart(2, "0"),
+      prompt: draft.prompt.trim(),
+      marks: draft.marks,
+    };
+  });
+
+  if (totalMarks !== 100) throw new Error("Written Exam must total exactly 100 marks. Current total: " + totalMarks + ".");
+  return questions;
+}
+
+function parsePaper(paperType: PaperType, raw: string): ParsedPaper {
+  if (!raw.trim()) throw new Error("Paste the question paper text first.");
+  if (paperType === "objective") {
+    const questions = parseObjective(raw);
+    return { questions, totalMarks: questions.reduce((sum, question) => sum + question.marks, 0) };
+  }
+  const writtenQuestions = parseWritten(raw);
+  return { writtenQuestions, totalMarks: writtenQuestions.reduce((sum, question) => sum + question.marks, 0) };
+}
+
+function serializePaper(paper: DemoPaper): string {
+  if (paper.paperType === "objective") {
+    return (paper.questions || []).map((question, index) => [
+      (index + 1) + ". " + question.prompt,
+      ...question.options.map((option, optionIndex) => String.fromCharCode(65 + optionIndex) + ") " + option),
+      "Answer: " + String.fromCharCode(65 + question.correctIndex),
+    ].join("\\n")).join("\\n\\n");
+  }
+  return (paper.writtenQuestions || []).map((question, index) =>
+    (index + 1) + ". " + question.prompt + "\\nMarks: " + question.marks
+  ).join("\\n\\n");
+}
+
+function WrittenAttemptCard({ attempt, onUpdated }: { attempt: DemoAttempt; onUpdated: () => void }) {
+  const questions = attempt.paper.writtenQuestions || [];
+  const [marks, setMarks] = useState<number[]>(
+    attempt.marksByQuestion || questions.map(() => 0)
+  );
+  const [error, setError] = useState("");
+
+  function saveMarks() {
+    try {
+      gradeDemoWrittenAttempt(attempt.attemptId, marks);
+      setError("");
+      onUpdated();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not save marks.");
+    }
+  }
+
+  return (
+    <article className="demo-attempt-card">
+      <div className="demo-attempt-heading">
+        <div><strong>{attempt.studentName}</strong><span>Roll {attempt.rollNumber} · {attempt.paper.title}</span></div>
+        <span className={attempt.status === "graded" ? "demo-attempt-status is-done" : "demo-attempt-status"}>{attempt.status === "graded" ? "Graded" : "Awaiting marking"}</span>
+      </div>
+      <div className="demo-answer-list">
+        {questions.map((question, index) => (
+          <div className="demo-answer-row" key={question.id}>
+            <div><strong>Q{index + 1}. {question.prompt}</strong><p>{String(attempt.answers[String(index)] || "No answer submitted")}</p></div>
+            <label>Marks / {question.marks}
+              <input
+                type="number"
+                min="0"
+                max={question.marks}
+                step="1"
+                value={marks[index] ?? 0}
+                disabled={attempt.status === "graded"}
+                onChange={(event) => setMarks((current) => current.map((value, markIndex) => markIndex === index ? Number(event.target.value) : value))}
+              />
+            </label>
+          </div>
+        ))}
+      </div>
+      {attempt.status === "graded" ? (
+        <p className="demo-attempt-score">Published result: {attempt.score}/100 marks</p>
+      ) : (
+        <button className="generate-button" type="button" onClick={saveMarks}>Save marks & publish result</button>
+      )}
+      {error && <p className="builder-message warning">{error}</p>}
+    </article>
+  );
+}
+
+export default function PaperBuilder({ onBack }: { onBack: () => void }) {
+  const [paperType, setPaperType] = useState<PaperType>("objective");
+  const [title, setTitle] = useState("Computer Basics Practice Test");
+  const [subject, setSubject] = useState("Computer");
+  const [className, setClassName] = useState("Practice Batch");
   const [duration, setDuration] = useState(60);
-  const [negativeMarking, setNegativeMarking] = useState(false);
-  const [rules, setRules] = useState<BlueprintRule[]>(initialRules);
-  const [manualIds, setManualIds] = useState<string[]>([]);
-  const [paper, setPaper] = useState<Question[]>([]);
+  const [startAtInput, setStartAtInput] = useState(localDateTime());
+  const [instructions, setInstructions] = useState("Read all questions carefully. Select or write your answers before submitting.");
+  const [rawText, setRawText] = useState("");
+  const [parsed, setParsed] = useState<ParsedPaper | null>(null);
   const [showAnswers, setShowAnswers] = useState(false);
   const [message, setMessage] = useState("");
-  const totalRequested = useMemo(
-    () => rules.reduce((sum, rule) => sum + rule.easy + rule.medium + rule.hard, 0),
-    [rules]
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [savedPapers, setSavedPapers] = useState<DemoPaper[]>([]);
+  const [attempts, setAttempts] = useState<DemoAttempt[]>([]);
+
+  const questionsCount = parsed?.questions?.length ?? parsed?.writtenQuestions?.length ?? 0;
+  const storedPaper = savedPapers.find((paper) => paper.id === editingId) || null;
+  const currentTypePaper = savedPapers.find((paper) => paper.paperType === paperType) || null;
+
+  const previewQuestions = useMemo(
+    () => paperType === "objective" ? parsed?.questions || [] : parsed?.writtenQuestions || [],
+    [paperType, parsed]
   );
-  const totalMarks = paper.reduce((sum, question) => sum + question.marks, 0);
-  const availableCount = questionBank.length;
 
-  function updateRule(topic: string, key: "easy" | "medium" | "hard", value: number) {
-    setRules((current) => current.map((rule) => rule.topic === topic ? { ...rule, [key]: Math.max(0, Math.min(50, value || 0)) } : rule));
-    setPaper([]);
+  function refreshStoredData() {
+    setSavedPapers(getDemoPapers());
+    setAttempts(getDemoAttempts());
+  }
+
+  useEffect(() => {
+    refreshStoredData();
+    window.addEventListener(DEMO_PAPER_EVENT, refreshStoredData);
+    window.addEventListener("storage", refreshStoredData);
+    return () => {
+      window.removeEventListener(DEMO_PAPER_EVENT, refreshStoredData);
+      window.removeEventListener("storage", refreshStoredData);
+    };
+  }, []);
+
+  function resetParsed() {
+    setParsed(null);
     setMessage("");
-  }
-
-  function generateAutomatic() {
-    if (totalRequested === 0) {
-      setPaper([]);
-      setMessage("Set at least one question in the blueprint before generating a paper.");
-      return;
-    }
-    const selected: Question[] = [];
-    const shortages: string[] = [];
-    const selectedIds = new Set<string>();
-    for (const rule of rules) {
-      const targets: Array<[Difficulty, number]> = [
-        ["Easy", rule.easy],
-        ["Medium", rule.medium],
-        ["Hard", rule.hard]
-      ];
-      for (const [difficulty, count] of targets) {
-        const candidates = questionBank
-          .filter((item) => item.topic === rule.topic && item.difficulty === difficulty && !selectedIds.has(item.id))
-          .sort((a, b) => a.id.localeCompare(b.id));
-        const chosen = candidates.slice(0, count);
-        chosen.forEach((item) => {
-          selected.push(item);
-          selectedIds.add(item.id);
-        });
-        if (chosen.length < count) {
-          shortages.push(rule.topic + " · " + difficulty + ": needed " + count + ", available " + chosen.length);
-        }
-      }
-    }
-    if (shortages.length > 0) {
-      setPaper([]);
-      setMessage("Not enough approved sample questions to satisfy this blueprint. " + shortages.join(" | "));
-      return;
-    }
-    setPaper(selected);
     setShowAnswers(false);
-    setMessage("Paper generated from " + selected.length + " eligible questions. Review it before publishing.");
   }
 
-  function generateManual() {
-    const chosen = questionBank.filter((item) => manualIds.includes(item.id));
-    if (chosen.length === 0) {
-      setMessage("Select at least one question before creating the paper.");
+  function loadPaper(paper: DemoPaper) {
+    setEditingId(paper.id);
+    setPaperType(paper.paperType);
+    setTitle(paper.title);
+    setSubject(paper.subject);
+    setClassName(paper.className);
+    setDuration(paper.durationMinutes);
+    setStartAtInput(toLocalDateTime(paper.startAt));
+    setInstructions(paper.instructions || "");
+    setRawText(serializePaper(paper));
+    setParsed(parsePaper(paper.paperType, serializePaper(paper)));
+    setShowAnswers(false);
+    setMessage("Loaded saved paper " + paper.title + " for editing.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function validateDetails(): string | null {
+    if (!title.trim()) return "Enter a paper title.";
+    if (!subject.trim()) return "Enter a subject.";
+    if (!className.trim()) return "Enter a class or batch.";
+    if (!Number.isInteger(duration) || duration < 5 || duration > 300) return "Duration must be between 5 and 300 minutes.";
+    if (!startAtInput || Number.isNaN(new Date(startAtInput).getTime())) return "Choose a valid exam date and time.";
+    return null;
+  }
+
+  function previewPaper() {
+    const detailError = validateDetails();
+    if (detailError) {
+      setMessage(detailError);
+      setParsed(null);
       return;
     }
-    setPaper(chosen);
-    setShowAnswers(false);
-    setMessage("Manual paper assembled with " + chosen.length + " selected questions.");
+    try {
+      const result = parsePaper(paperType, rawText);
+      setParsed(result);
+      setShowAnswers(false);
+      setMessage(
+        paperType === "objective"
+          ? "Preview ready: 50 Objective questions · 100 marks. All four options and answer keys are valid."
+          : "Preview ready: " + result.writtenQuestions?.length + " Written questions · 100 marks."
+      );
+    } catch (cause) {
+      setParsed(null);
+      setMessage(cause instanceof Error ? cause.message : "Could not parse the question paper.");
+    }
   }
 
-  function toggleManual(id: string) {
-    setManualIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  function persistPaper(publish: boolean) {
+    const detailError = validateDetails();
+    if (detailError) {
+      setMessage(detailError);
+      return;
+    }
+    let result: ParsedPaper;
+    try {
+      result = parsePaper(paperType, rawText);
+    } catch (cause) {
+      setParsed(null);
+      setMessage(cause instanceof Error ? cause.message : "Paper validation failed.");
+      return;
+    }
+    const previous = editingId ? savedPapers.find((paper) => paper.id === editingId) : null;
+    const saved = saveDemoPaper({
+      id: editingId || makeId(),
+      paperType,
+      title: title.trim(),
+      subject: subject.trim(),
+      className: className.trim(),
+      startAt: new Date(startAtInput).toISOString(),
+      durationMinutes: duration,
+      instructions: instructions.trim(),
+      ...(result.questions ? { questions: result.questions } : {}),
+      ...(result.writtenQuestions ? { writtenQuestions: result.writtenQuestions } : {}),
+      published: publish,
+      createdAt: previous?.createdAt,
+      publishedAt: publish ? new Date().toISOString() : previous?.publishedAt,
+    });
+    setEditingId(saved.id);
+    setParsed(result);
+    setShowAnswers(false);
+    setMessage(publish
+      ? saved.title + " published. It is now available in Student Exams in this same browser."
+      : saved.title + " saved as a draft in this browser.");
+    refreshStoredData();
   }
+
+  function togglePublished(paper: DemoPaper) {
+    const updated = setDemoPaperPublished(paper.id, !paper.published);
+    if (updated) {
+      setMessage(updated.published ? updated.title + " published." : updated.title + " unpublished.");
+      refreshStoredData();
+    }
+  }
+
+  const activeAttempts = attempts.filter((attempt) => attempt.status === "awaiting_marking" || attempt.status === "graded");
 
   return (
     <div className="paper-builder">
       <div className="builder-toolbar">
         <button className="back-link" onClick={onBack}>← Dashboard</button>
         <div className="builder-actions">
-          <span className="draft-tag">DRAFT</span>
-          <button className="secondary-button" disabled={paper.length === 0} onClick={() => setShowAnswers((value) => !value)}>{showAnswers ? "Hide answer key" : "View answer key"}</button>
-          <button className="print-button" disabled={paper.length === 0} onClick={() => window.print()}>Print / Save PDF</button>
+          <span className="draft-tag">DEMO PAPER WORKSPACE</span>
+          <button className="secondary-button" type="button" disabled={!parsed} onClick={() => setShowAnswers((value) => !value)}>
+            {showAnswers ? "Hide answer key" : "View answer key"}
+          </button>
+          <button className="print-button" type="button" disabled={!parsed} onClick={() => window.print()}>Print / Save PDF</button>
         </div>
       </div>
 
-      <div className="builder-title"><div><div className="eyebrow">ASSESSMENT WORKFLOW / PAPER BUILDER</div><h1>Create question paper</h1><p>Configure the test, build a paper and review the printable version.</p></div><div className="step-chip"><span>1</span> Details <i>—</i><span>2</span> Questions <i>—</i><span>3</span> Preview</div></div>
+      <div className="builder-title">
+        <div><div className="eyebrow">ASSESSMENT WORKFLOW / DEMO MODE</div><h1>Paper Management</h1><p>Create, preview, save and publish papers directly in this Coaching app.</p></div>
+        <div className="step-chip"><span>1</span> Details <i>—</i><span>2</span> Questions <i>—</i><span>3</span> Publish</div>
+      </div>
+
+      <div className="demo-mode-banner">
+        <strong>Local demo storage</strong>
+        Papers, student attempts and results are stored in this browser. No Python repository, Render URL or external exam API is used. Use the same browser profile for admin and student testing.
+      </div>
 
       <div className="builder-layout">
         <section className="builder-main">
           <div className="builder-card">
-            <div className="card-heading"><div><h2>Basic details</h2><p>Set the test information shown on the paper.</p></div><span className="section-number">01</span></div>
+            <div className="card-heading">
+              <div><h2>Paper details</h2><p>Choose the exam type and set the schedule.</p></div><span className="section-number">01</span>
+            </div>
+            <div className="mode-switch">
+              <button type="button" className={paperType === "objective" ? "mode-option selected" : "mode-option"} onClick={() => { setPaperType("objective"); resetParsed(); }}>
+                Objective Exam · 50 × 2
+              </button>
+              <button type="button" className={paperType === "written" ? "mode-option selected" : "mode-option"} onClick={() => { setPaperType("written"); resetParsed(); }}>
+                Written Exam · 100 marks
+              </button>
+            </div>
             <div className="form-grid">
-              <label className="field field-wide">Test name<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-              <label className="field">Course / Class<select value={course} onChange={(event) => setCourse(event.target.value)}><option>Class 12</option><option>Class 11</option><option>JEE Foundation</option><option>NEET Foundation</option></select></label>
-              <label className="field">Subject<input value={subject} readOnly /></label>
-              <label className="field">Duration (minutes)<input type="number" min="5" max="300" value={duration} onChange={(event) => setDuration(Math.max(5, Number(event.target.value) || 5))} /></label>
-              <label className="field checkbox-field"><input type="checkbox" checked={negativeMarking} onChange={(event) => setNegativeMarking(event.target.checked)} /> Enable negative marking <small>Scoring policy will be configured before exam publishing.</small></label>
+              <label className="field field-wide">Paper title<input value={title} onChange={(event) => { setTitle(event.target.value); resetParsed(); }} placeholder="e.g. Computer Basics Practice Test" /></label>
+              <label className="field">Subject<input value={subject} onChange={(event) => { setSubject(event.target.value); resetParsed(); }} placeholder="e.g. Computer" /></label>
+              <label className="field">Class / Batch<input value={className} onChange={(event) => { setClassName(event.target.value); resetParsed(); }} placeholder="e.g. Practice Batch" /></label>
+              <label className="field">Exam date & time<input type="datetime-local" value={startAtInput} onChange={(event) => { setStartAtInput(event.target.value); resetParsed(); }} /></label>
+              <label className="field">Duration (minutes)<input type="number" min="5" max="300" value={duration} onChange={(event) => { setDuration(Number(event.target.value)); resetParsed(); }} /></label>
+              <label className="field field-wide">Student instructions<textarea rows={2} value={instructions} onChange={(event) => setInstructions(event.target.value)} /></label>
             </div>
           </div>
 
           <div className="builder-card">
-            <div className="card-heading"><div><h2>Select questions</h2><p>Choose manual selection or use a syllabus blueprint.</p></div><span className="section-number">02</span></div>
-            <div className="mode-switch">
-              <button className={mode === "automatic" ? "mode-option selected" : "mode-option"} onClick={() => { setMode("automatic"); setPaper([]); setMessage(""); }}>✦ Auto generate</button>
-              <button className={mode === "manual" ? "mode-option selected" : "mode-option"} onClick={() => { setMode("manual"); setPaper([]); setMessage(""); }}>☷ Select manually</button>
+            <div className="card-heading"><div><h2>Paste question paper text</h2><p>Paste the questions here. The parser separates Objective and Written questions even when both sections are present in the same text.</p></div><span className="section-number">02</span></div>
+            <div className="demo-format-hint">
+              {paperType === "objective"
+                ? "Objective format: 1. Question text, A) Option, B) Option, C) Option, D) Option, Answer: B. Exactly 50 MCQs are required."
+                : "Written format: 1. Question text, Marks: 2 / 4 / 6. Objective MCQ blocks in the same pasted text are ignored. Written total must equal 100 marks."}
             </div>
-
-            {mode === "automatic" ? (
-              <>
-                <div className="blueprint-caption"><strong>Paper blueprint</strong><span>Questions required: {totalRequested}</span></div>
-                <div className="blueprint-table-wrap"><table className="blueprint-table"><thead><tr><th>Chapter / Topic</th><th>Easy</th><th>Medium</th><th>Hard</th><th>Total</th></tr></thead><tbody>
-                  {rules.map((rule) => <tr key={rule.topic}>
-                    <td><strong>{rule.topic}</strong></td>
-                    <td><input aria-label={rule.topic + " easy questions"} type="number" min="0" value={rule.easy} onChange={(event) => updateRule(rule.topic, "easy", Number(event.target.value))} /></td>
-                    <td><input aria-label={rule.topic + " medium questions"} type="number" min="0" value={rule.medium} onChange={(event) => updateRule(rule.topic, "medium", Number(event.target.value))} /></td>
-                    <td><input aria-label={rule.topic + " hard questions"} type="number" min="0" value={rule.hard} onChange={(event) => updateRule(rule.topic, "hard", Number(event.target.value))} /></td>
-                    <td><strong>{rule.easy + rule.medium + rule.hard}</strong></td>
-                  </tr>)}
-                </tbody></table></div>
-                <div className="bank-availability"><span>Sample approved bank: {availableCount} questions</span><span>Difficulty is separate from cognitive skill in the full bank.</span></div>
-                <button className="generate-button" onClick={generateAutomatic}>✦ Generate paper</button>
-              </>
-            ) : (
-              <>
-                <div className="blueprint-caption"><strong>Available sample questions</strong><span>{manualIds.length} selected</span></div>
-                <div className="manual-question-list">
-                  {questionBank.map((item) => <label key={item.id} className="manual-question">
-                    <input type="checkbox" checked={manualIds.includes(item.id)} onChange={() => toggleManual(item.id)} />
-                    <span><strong>{item.prompt}</strong><small>{item.topic} · {item.difficulty} · {item.marks} marks</small></span>
-                  </label>)}
-                </div>
-                <button className="generate-button" onClick={generateManual}>Create paper from selection</button>
-              </>
-            )}
-            {message && <div className={paper.length ? "builder-message success" : "builder-message warning"} role="status">{message}</div>}
+            <textarea
+              className="demo-question-input"
+              rows={18}
+              value={rawText}
+              onChange={(event) => { setRawText(event.target.value); resetParsed(); }}
+              placeholder={paperType === "objective"
+                ? "1. What does CPU stand for?\nA) Central Processing Unit\nB) Computer Personal Unit\nC) Central Program Utility\nD) Control Processing User\nAnswer: A\n\n... continue until question 50"
+                : "1. Explain the function of an operating system.\nMarks: 6\n\n2. Define RAM.\nMarks: 2\n\n... continue until total marks are 100"}
+              spellCheck={false}
+            />
+            <div className="demo-builder-actions">
+              <button className="secondary-button" type="button" onClick={previewPaper}>Preview parsed paper</button>
+              <button className="secondary-button" type="button" onClick={() => persistPaper(false)}>Save Draft</button>
+              <button className="generate-button" type="button" onClick={() => persistPaper(true)}>Publish {paperType === "objective" ? "Objective" : "Written"} Exam</button>
+              {editingId && <button className="secondary-button" type="button" onClick={() => { setEditingId(null); setRawText(""); setParsed(null); setMessage("Ready for a new paper."); }}>New paper</button>}
+            </div>
+            {message && <div className={parsed ? "builder-message success" : "builder-message warning"} role="status">{message}</div>}
           </div>
         </section>
 
         <aside className="builder-side">
           <div className="summary-card">
-            <div className="summary-heading"><span>▤</span><strong>Paper summary</strong></div>
-            <div className="summary-line"><span>Questions in bank</span><strong>{availableCount}</strong></div>
-            <div className="summary-line"><span>Requested questions</span><strong>{totalRequested}</strong></div>
-            <div className="summary-line"><span>Selected questions</span><strong>{paper.length}</strong></div>
-            <div className="summary-line"><span>Duration</span><strong>{duration} min</strong></div>
-            <div className="summary-total"><span>Generated marks</span><strong>{totalMarks}</strong></div>
-            <p>Marks are calculated from selected question records. Final exam settings and approval will be added before publishing.</p>
+            <div className="summary-heading"><span>▤</span><strong>Paper validation</strong></div>
+            <div className="summary-line"><span>Exam type</span><strong>{paperType === "objective" ? "Objective" : "Written"}</strong></div>
+            <div className="summary-line"><span>Required questions</span><strong>{paperType === "objective" ? "50" : "Variable"}</strong></div>
+            <div className="summary-line"><span>Parsed questions</span><strong>{parsed ? questionsCount : "—"}</strong></div>
+            <div className="summary-total"><span>Total marks</span><strong>{parsed ? parsed.totalMarks : "100"}</strong></div>
+            <p>{paperType === "objective" ? "Every objective question carries 2 marks and needs four options plus a correct answer." : "Each written question must carry 2, 4 or 6 marks. The final total must be 100."}</p>
           </div>
-          <div className="workflow-tip"><span>ⓘ</span><div><strong>Before publishing</strong><p>Review question wording, answer key, total marks, duration and instructions. A published paper will be frozen as a version.</p></div></div>
+          <div className="workflow-tip">
+            <span>ⓘ</span><div><strong>Demo publishing</strong><p>Publish makes the current paper appear in Student Exams in this same browser. Unpublish hides it without deleting saved attempts.</p></div>
+          </div>
         </aside>
       </div>
 
       <section className="paper-preview-section">
-        <div className="preview-heading"><div><div className="eyebrow">PRINT LAYOUT</div><h2>Paper preview</h2><p>This is the teacher preview. The answer key can be toggled separately.</p></div><span className="preview-badge">A4 PREVIEW</span></div>
+        <div className="preview-heading"><div><div className="eyebrow">PRINT LAYOUT</div><h2>Paper preview</h2><p>Teacher preview. The answer key is only shown when you select View answer key.</p></div><span className="preview-badge">A4 PREVIEW</span></div>
         <div className="print-paper">
-          <div className="paper-brand"><div className="paper-logo">C</div><div><strong>COACHING PRO</strong><span>INSTITUTE NAME</span></div></div>
-          <div className="paper-title"><h2>{title || "Untitled Test"}</h2><p>{course} · {subject}</p></div>
-          <div className="paper-meta"><span>Time: {duration} minutes</span><span>Maximum marks: {totalMarks || "—"}</span><span>Questions: {paper.length}</span></div>
+          <div className="paper-brand"><div className="paper-logo">C</div><div><strong>COACHING PRO</strong><span>INSTITUTE PRACTICE PAPER</span></div></div>
+          <div className="paper-title"><h2>{title || "Untitled Test"}</h2><p>{className} · {subject} · {paperType === "objective" ? "Objective Exam" : "Written Exam"}</p></div>
+          <div className="paper-meta"><span>Time: {duration} minutes</span><span>Maximum marks: {parsed?.totalMarks ?? 100}</span><span>Questions: {parsed ? questionsCount : "—"}</span></div>
           <div className="student-lines"><span>Student name: __________________________</span><span>Roll no.: ______________</span></div>
-          <div className="paper-instructions"><strong>General instructions</strong><ol><li>Read each question carefully before answering.</li><li>Write your answers clearly in the space provided.</li><li>{negativeMarking ? "Negative marking is enabled; refer to the exam instructions." : "There is no negative marking in this draft."}</li></ol></div>
-          {paper.length === 0 ? <div className="paper-empty">Your generated questions will appear here. Set a blueprint or select questions manually, then generate the paper.</div> : (
-            <div className="paper-questions">{paper.map((item, index) => <article key={item.id} className="paper-question">
-              <div className="paper-question-title"><strong>{index + 1}. {item.prompt}</strong><span>({item.marks} marks)</span></div>
-              <div className="paper-options">{item.options.map((option, optionIndex) => <span key={option}>{String.fromCharCode(65 + optionIndex)}. {option}</span>)}</div>
-              {showAnswers && <div className="answer-key">Answer: {item.answer}</div>}
-            </article>)}</div>
+          <div className="paper-instructions"><strong>General instructions</strong><p>{instructions || "Read all questions carefully."}</p></div>
+          {!parsed ? (
+            <div className="paper-empty">Paste the question text and select Preview parsed paper. Validated questions will appear here.</div>
+          ) : paperType === "objective" ? (
+            <div className="paper-questions">
+              {(parsed.questions || []).map((question, index) => (
+                <article key={question.id} className="paper-question">
+                  <div className="paper-question-title"><strong>{index + 1}. {question.prompt}</strong><span>({question.marks} marks)</span></div>
+                  <div className="paper-options">{question.options.map((option, optionIndex) => <span key={optionIndex}>{String.fromCharCode(65 + optionIndex)}. {option}</span>)}</div>
+                  {showAnswers && <div className="answer-key">Answer: {String.fromCharCode(65 + question.correctIndex)}</div>}
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="paper-questions">
+              {(parsed.writtenQuestions || []).map((question, index) => (
+                <article key={question.id} className="paper-question">
+                  <div className="paper-question-title"><strong>{index + 1}. {question.prompt}</strong><span>({question.marks} marks)</span></div>
+                  {showAnswers && <div className="answer-key">Teacher marking guide: evaluate the written response against the question and award 0–{question.marks} marks.</div>}
+                </article>
+              ))}
+            </div>
           )}
           <div className="paper-end">— End of question paper —</div>
         </div>
       </section>
-      <p className="prototype-disclaimer">Prototype using sample question records in the browser. Questions are not yet stored in PostgreSQL and generated papers are not yet persisted or assigned to students.</p>
+
+      <section className="demo-saved-section">
+        <div className="section-heading"><div><h2>Saved papers</h2><p>Draft and published papers stored in this browser.</p></div><span className="preview-badge">{savedPapers.length} PAPERS</span></div>
+        {savedPapers.length === 0 ? <div className="demo-empty-card">No saved papers yet. Create your first Objective or Written paper above.</div> : (
+          <div className="demo-saved-grid">
+            {savedPapers.map((paper) => (
+              <article className="demo-saved-card" key={paper.id}>
+                <div className="demo-saved-top"><span>{paper.paperType === "objective" ? "OBJECTIVE" : "WRITTEN"}</span><b className={paper.published ? "is-published" : ""}>{paper.published ? "Published" : "Draft / Off"}</b></div>
+                <h3>{paper.title}</h3>
+                <p>{paper.subject} · {paper.className} · {paper.durationMinutes} min</p>
+                <small>Scheduled: {new Date(paper.startAt).toLocaleString()}</small>
+                <div className="demo-saved-actions">
+                  <button type="button" className="secondary-button" onClick={() => loadPaper(paper)}>Edit / Load</button>
+                  <button type="button" className="secondary-button" onClick={() => togglePublished(paper)}>{paper.published ? "Unpublish" : "Publish"}</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="demo-saved-section">
+        <div className="section-heading"><div><h2>Student submissions & results</h2><p>Objective results are automatic. Written answers need teacher marking.</p></div><span className="preview-badge">{activeAttempts.length} SUBMISSIONS</span></div>
+        {activeAttempts.length === 0 ? <div className="demo-empty-card">Student submissions will appear here after a demo exam is submitted.</div> : (
+          <div className="demo-submissions-list">
+            {activeAttempts.map((attempt) => attempt.paper.paperType === "written" && attempt.status === "awaiting_marking" ? (
+              <WrittenAttemptCard key={attempt.attemptId} attempt={attempt} onUpdated={refreshStoredData} />
+            ) : (
+              <article className="demo-attempt-card" key={attempt.attemptId}>
+                <div className="demo-attempt-heading">
+                  <div><strong>{attempt.studentName}</strong><span>Roll {attempt.rollNumber} · {attempt.paper.title}</span></div>
+                  <span className="demo-attempt-status is-done">{attempt.status === "graded" ? "Graded" : "Auto evaluated"}</span>
+                </div>
+                <p className="demo-attempt-score">
+                  {attempt.score ?? "—"}/{attempt.totalMarks} marks
+                  {attempt.paper.paperType === "objective" ? " · " + (attempt.correctCount ?? 0) + " correct · " + (attempt.incorrectCount ?? 0) + " incorrect · " + (attempt.unansweredCount ?? 0) + " unanswered" : ""}
+                </p>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+      <p className="prototype-disclaimer">Demo limitation: browser-local storage is not shared with another phone, computer or browser profile and can be cleared by the user. This is for same-browser workflow testing, not production student data.</p>
     </div>
   );
 }
