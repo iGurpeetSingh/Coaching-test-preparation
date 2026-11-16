@@ -248,9 +248,6 @@ export default function PaperBuilder({ onBack }: { onBack: () => void }) {
   const [attempts, setAttempts] = useState<DemoAttempt[]>([]);
 
   const questionsCount = parsed?.questions?.length ?? parsed?.writtenQuestions?.length ?? 0;
-  const storedPaper = savedPapers.find((paper) => paper.id === editingId) || null;
-  const currentTypePaper = savedPapers.find((paper) => paper.paperType === paperType) || null;
-
   const previewQuestions = useMemo(
     () => paperType === "objective" ? parsed?.questions || [] : parsed?.writtenQuestions || [],
     [paperType, parsed]
@@ -371,7 +368,7 @@ export default function PaperBuilder({ onBack }: { onBack: () => void }) {
     }
   }
 
-  const activeAttempts = attempts.filter((attempt) => attempt.status === "awaiting_marking" || attempt.status === "graded");
+  const activeAttempts = attempts.filter((attempt) => attempt.status === "evaluated" || attempt.status === "awaiting_marking" || attempt.status === "graded");
 
   return (
     <div className="paper-builder">
