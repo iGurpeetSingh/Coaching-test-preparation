@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { sql } from "kysely";
 import { db, pool } from "./db.js";
@@ -11,24 +11,33 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 );
 `).execute(db);
 
-  const migrationName = "001_student_enquiry_management.sql";
-  const migrationPath = resolve(process.cwd(), "migrations", migrationName);
-  const migration = await readFile(migrationPath, "utf8");
+  const migrationDirectory = resolve(process.cwd(), "migrations");
+  const migrationNames = (await readdir(migrationDirectory))
+    .filter((name) => /^\d+_[a-z0-9_]+\.sql$/i.test(name))
+    .sort((left, right) => left.localeCompare(right, "en"));
 
-  const alreadyApplied = await sql<{ migration_name: string }>`
-SELECT migration_name FROM schema_migrations WHERE migration_name = ${migrationName}
-`.execute(db);
-
-  if (alreadyApplied.rows.length > 0) {
-    console.log("Migration already applied:", migrationName);
+  if (!migrationNames.length) {
+    console.log("No SQL migrations were found.");
     return;
   }
 
-  await db.transaction().execute(async (trx) => {
-    await sql.raw(migration).execute(trx);
-    await sql`INSERT INTO schema_migrations (migration_name) VALUES (${migrationName})`.execute(trx);
-  });
-  console.log("Applied migration:", migrationName);
+  for (const migrationName of migrationNames) {
+    const alreadyApplied = await sql<{ migration_name: string }>`
+      SELECT migration_name FROM schema_migrations WHERE migration_name = ${migrationName}
+    `.execute(db);
+
+    if (alreadyApplied.rows.length > 0) {
+      console.log("Migration already applied:", migrationName);
+      continue;
+    }
+
+    const migration = await readFile(resolve(migrationDirectory, migrationName), "utf8");
+    await db.transaction().execute(async (trx) => {
+      await sql.raw(migration).execute(trx);
+      await sql`INSERT INTO schema_migrations (migration_name) VALUES (${migrationName})`.execute(trx);
+    });
+    console.log("Applied migration:", migrationName);
+  }
 }
 
 main()
