@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import StudentExamRunner, { type ExamPaper } from "./StudentExamRunner";
+import {
+  DEMO_PAPER_EVENT,
+  getPublishedDemoPapers,
+  type DemoPaper,
+  type PaperType,
+} from "../papers/demo-paper-store";
+import StudentExamRunner from "./StudentExamRunner";
 import "./student-exams.css";
-
-type PaperType = "objective" | "written";
-type PublishedPaper = ExamPaper;
-type PublishedResponse = { items?: PublishedPaper[] };
-
-const API_BASE_URL = (import.meta.env.VITE_EXAMS_API_URL || "").trim().replace(/\/+$/, "");
 
 const PAPER_CARDS: Array<{
   type: PaperType;
@@ -43,76 +43,40 @@ function formatDate(value: string): string {
   });
 }
 
-function examState(paper: PublishedPaper | null): "coming" | "live" | "closed" {
+function examState(paper: DemoPaper | null): "coming" | "live" | "closed" {
   if (!paper) return "coming";
   const start = new Date(paper.startAt).getTime();
   if (!Number.isFinite(start)) return "coming";
   if (Date.now() < start) return "coming";
-  const end = start + Math.max(1, paper.durationMinutes) * 60 * 1000;
+  const end = start + Math.max(1, paper.durationMinutes) * 60_000;
   return Date.now() < end ? "live" : "closed";
 }
 
 export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?: string }) {
-  const [papers, setPapers] = useState<PublishedPaper[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState("");
+  const [papers, setPapers] = useState<DemoPaper[]>([]);
+  const [activePaper, setActivePaper] = useState<DemoPaper | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [activePaper, setActivePaper] = useState<PublishedPaper | null>(null);
-  const [, setClock] = useState(Date.now());
 
-  const loadPapers = useCallback(async (manual = false) => {
-    if (!API_BASE_URL) {
-      setPapers([]);
-      setError("Exam service is not connected yet. The API URL must be configured by the site administrator.");
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
-
-    if (manual) setRefreshing(true);
-    else setLoading(true);
-    setError("");
-
-    try {
-      const response = await fetch(API_BASE_URL + "/api/exams/published", {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        cache: "no-store",
-      });
-      if (!response.ok) {
-        throw new Error(response.status === 503
-          ? "Exam service is not configured yet."
-          : "Published papers could not be loaded. Please refresh again.");
-      }
-      const data = (await response.json()) as PublishedResponse;
-      setPapers(Array.isArray(data.items) ? data.items : []);
-      setLastUpdated(new Date());
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not connect to the exam service.");
-      setPapers([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+  const refreshPapers = useCallback(() => {
+    setPapers(getPublishedDemoPapers());
+    setLastUpdated(new Date());
   }, []);
 
   useEffect(() => {
-    void loadPapers();
-  }, [loadPapers]);
+    refreshPapers();
+    const handleUpdate = () => refreshPapers();
+    window.addEventListener(DEMO_PAPER_EVENT, handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    const poll = window.setInterval(refreshPapers, 5000);
+    return () => {
+      window.removeEventListener(DEMO_PAPER_EVENT, handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+      window.clearInterval(poll);
+    };
+  }, [refreshPapers]);
 
-  // Keep the student exam list in sync with papers published from the Android control app.
-  // The active exam runner is intentionally excluded so a running paper is not replaced mid-attempt.
   useEffect(() => {
-    if (activePaper) return;
-    const paperSync = window.setInterval(() => {
-      void loadPapers(true);
-    }, 15000);
-    return () => window.clearInterval(paperSync);
-  }, [activePaper, loadPapers]);
-
-  useEffect(() => {
-    const clock = window.setInterval(() => setClock(Date.now()), 15000);
+    const clock = window.setInterval(() => setLastUpdated(new Date()), 15_000);
     return () => window.clearInterval(clock);
   }, []);
 
@@ -134,10 +98,9 @@ export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?:
     return (
       <StudentExamRunner
         paper={activePaper}
-        apiBaseUrl={API_BASE_URL}
         onClose={() => {
           setActivePaper(null);
-          void loadPapers(true);
+          refreshPapers();
         }}
       />
     );
@@ -147,28 +110,20 @@ export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?:
     <section className="student-exams-page">
       <div className="student-exams-heading">
         <div>
-          <span className="student-exams-eyebrow">STUDENT EXAM PORTAL</span>
+          <span className="student-exams-eyebrow">STUDENT EXAM PORTAL · DEMO MODE</span>
           <h1>Exams</h1>
           <p>Choose the exam type assigned to your class or batch.</p>
         </div>
-        <button
-          className="student-exams-refresh"
-          type="button"
-          onClick={() => void loadPapers(true)}
-          disabled={loading || refreshing}
-        >
-          <span aria-hidden="true">↻</span>
-          {refreshing ? "Refreshing..." : "Refresh papers"}
+        <button className="student-exams-refresh" type="button" onClick={refreshPapers}>
+          <span aria-hidden="true">↻</span> Refresh papers
         </button>
       </div>
 
       <div className="student-exams-sync" aria-live="polite">
-        <span className={loading || refreshing ? "student-exams-dot is-loading" : "student-exams-dot"} />
-        {loading
-          ? "Checking published papers..."
-          : lastUpdated
-            ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-            : "Paper availability"}
+        <span className="student-exams-dot" />
+        {lastUpdated
+          ? `Demo papers synced at ${lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+          : "Checking demo papers..."}
       </div>
 
       <div className="student-exams-grid">
@@ -199,13 +154,8 @@ export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?:
                 )}
               </div>
               {state === "live" && paper ? (
-                <button
-                  type="button"
-                  className="student-exam-open"
-                  onClick={() => setActivePaper(paper)}
-                >
-                  Start Exam
-                  <span aria-hidden="true">→</span>
+                <button type="button" className="student-exam-open" onClick={() => setActivePaper(paper)}>
+                  Start Exam <span aria-hidden="true">→</span>
                 </button>
               ) : (
                 <div className="student-exam-coming-note">
@@ -221,10 +171,10 @@ export default function StudentExamLibrary({ searchQuery = "" }: { searchQuery?:
         })}
       </div>
 
-      {visibleCards.length === 0 && (
-        <div className="student-exam-empty-state">No exam types match this search.</div>
-      )}
-      {error && <p className="student-exam-connection-note" role="status">{error}</p>}
+      {visibleCards.length === 0 && <div className="student-exam-empty-state">No exam types match this search.</div>}
+      <p className="student-exam-demo-note">
+        Demo mode: papers and attempts are saved in this browser only. Use the same browser profile for Paper Management and Student Exams.
+      </p>
     </section>
   );
 }
