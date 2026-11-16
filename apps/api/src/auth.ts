@@ -121,18 +121,18 @@ authRouter.post("/login", loginLimiter, async (request, response, next) => {
     const result = tenantSlug
       ? await sql<any>\`
           SELECT u.id AS user_id, u.email, u.full_name, u.password_hash,
-                 m.id AS membership_id, t.id AS tenant_id, t.name AS tenant_name, t.slug AS tenant_slug
+                 m.membership_id AS membership_id, t.id AS tenant_id, t.name AS tenant_name, t.slug AS tenant_slug
           FROM users u
-          JOIN memberships m ON m.user_id = u.id AND m.status = 'active'
+          JOIN login_membership_directory m ON m.user_id = u.id AND m.membership_status = 'active'
           JOIN tenants t ON t.id = m.tenant_id AND t.status = 'active'
           WHERE u.email_normalized = \${email} AND u.is_active = true AND t.slug = \${tenantSlug}
           LIMIT 2
         \`.execute(db)
       : await sql<any>\`
           SELECT u.id AS user_id, u.email, u.full_name, u.password_hash,
-                 m.id AS membership_id, t.id AS tenant_id, t.name AS tenant_name, t.slug AS tenant_slug
+                 m.membership_id AS membership_id, t.id AS tenant_id, t.name AS tenant_name, t.slug AS tenant_slug
           FROM users u
-          JOIN memberships m ON m.user_id = u.id AND m.status = 'active'
+          JOIN login_membership_directory m ON m.user_id = u.id AND m.membership_status = 'active'
           JOIN tenants t ON t.id = m.tenant_id AND t.status = 'active'
           WHERE u.email_normalized = \${email} AND u.is_active = true
           ORDER BY t.name
@@ -196,32 +196,47 @@ export async function requireAuth(request: Request, response: Response, next: Ne
       response.status(401).json({ error: { code: "UNAUTHENTICATED", message: "Sign in to continue." } });
       return;
     }
-    const result = await sql<any>\`
-      SELECT s.id AS session_id, s.tenant_id, s.membership_id, s.csrf_hash,
-             u.id AS user_id, u.email, u.full_name, u.is_active AS user_active,
-             m.status AS membership_status, t.name AS tenant_name, t.slug AS tenant_slug,
-             t.status AS tenant_status
-      FROM user_sessions s
-      JOIN memberships m ON m.id = s.membership_id AND m.tenant_id = s.tenant_id
-      JOIN users u ON u.id = m.user_id
-      JOIN tenants t ON t.id = s.tenant_id
-      WHERE s.token_hash = \${hash(token)} AND s.revoked_at IS NULL AND s.expires_at > now()
+
+    // Session table is the only unscoped lookup here. All tenant-owned identity rows
+    // are fetched only after the tenant id has been established from this opaque token.
+    const sessionResult = await sql<any>\`
+      SELECT id AS session_id, tenant_id, membership_id, csrf_hash
+      FROM user_sessions
+      WHERE token_hash = \${hash(token)} AND revoked_at IS NULL AND expires_at > now()
       LIMIT 1
     \`.execute(db);
-    const session = result.rows[0];
-    if (!session || !session.user_active || session.membership_status !== "active" || session.tenant_status !== "active") {
+    const session = sessionResult.rows[0];
+    if (!session) {
       clearSessionCookies(response);
       response.status(401).json({ error: { code: "SESSION_EXPIRED", message: "Your session expired. Sign in again." } });
       return;
     }
+
+    const identityResult = await withTenant(session.tenant_id, async (trx) => sql<any>\`
+      SELECT u.id AS user_id, u.email, u.full_name, u.is_active AS user_active,
+             m.status AS membership_status, t.name AS tenant_name, t.slug AS tenant_slug,
+             t.status AS tenant_status
+      FROM memberships m
+      JOIN users u ON u.id = m.user_id
+      JOIN tenants t ON t.id = m.tenant_id
+      WHERE m.id = \${session.membership_id} AND m.tenant_id = \${session.tenant_id}
+      LIMIT 1
+    \`.execute(trx));
+    const identity = identityResult.rows[0];
+    if (!identity || !identity.user_active || identity.membership_status !== "active" || identity.tenant_status !== "active") {
+      clearSessionCookies(response);
+      response.status(401).json({ error: { code: "SESSION_REVOKED", message: "Your workspace access is no longer active." } });
+      return;
+    }
+
     request.auth = {
-      userId: session.user_id,
+      userId: identity.user_id,
       membershipId: session.membership_id,
       tenantId: session.tenant_id,
-      tenantName: session.tenant_name,
-      tenantSlug: session.tenant_slug,
-      email: session.email,
-      fullName: session.full_name
+      tenantName: identity.tenant_name,
+      tenantSlug: identity.tenant_slug,
+      email: identity.email,
+      fullName: identity.full_name
     };
     response.locals.sessionId = session.session_id;
     response.locals.sessionCsrfHash = session.csrf_hash;
