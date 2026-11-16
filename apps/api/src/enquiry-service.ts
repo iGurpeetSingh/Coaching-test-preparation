@@ -61,13 +61,15 @@ export function assertBranch(request: Request, branchId: string): void {
 export async function getEnquiry(
   trx: Transaction<any>,
   tenantId: string,
-  enquiryId: string,
+  enquiryId: string | string[],
   includeArchived = false
 ): Promise<EnquiryRow> {
+  const normalizedEnquiryId = Array.isArray(enquiryId) ? enquiryId[0] : enquiryId;
+  if (!normalizedEnquiryId) throw new ApiError(404, "ENQUIRY_NOT_FOUND", "Enquiry was not found.");
   const result = await sql<EnquiryRow>`
     SELECT *
     FROM enquiries
-    WHERE tenant_id = ${tenantId} AND id = ${enquiryId}
+    WHERE tenant_id = ${tenantId} AND id = ${normalizedEnquiryId}
       AND (${includeArchived} = true OR archived_at IS NULL)
     LIMIT 1
   `.execute(trx);
