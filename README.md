@@ -1,31 +1,33 @@
 # Coaching & Test Preparation
 
-A multi-tenant coaching-institute operations and test-preparation platform. The repository contains product research, a React/Vite dashboard prototype and an Express/PostgreSQL API.
+A multi-tenant coaching-institute operations and test-preparation platform. The repository contains product research, a React/Vite dashboard and an Express/PostgreSQL API.
 
-## Current implementation status — 16 November 2026
+## Verified repository status — 16 November 2026
 
-The latest verified GitHub Actions run passes frontend/backend TypeScript checks, six API domain tests and both production builds.
+The latest GitHub Actions run on the main branch passed frontend/backend TypeScript checks, six API domain unit tests and both production builds.
 
-### Implemented in the repository
+### Implemented code
 
-- Product research, competitor scan, business workflows, functional requirements, architecture and QA baseline.
-- React + TypeScript + Vite dashboard shell.
-- Express + TypeScript API with liveness and database-readiness endpoints.
-- Authentication/session routes: CSRF bootstrap, login, logout and current-user context.
-- Enquiry CRM routes: dashboard, list, create, update, status transitions, assignment, activity, archive and restore.
-- Admission conversion: creates/reuses a student, validates course/batch/fees and writes audit/activity history.
-- Follow-up worklists, creation, completion and cancellation.
-- Tenant-scoped course and batch list/create/update APIs.
-- Tenant/branch-scoped student directory API.
-- PostgreSQL migration for institute identity, roles, courses, batches, enquiries, students, admissions, follow-ups and audit/idempotency records.
-- GitHub Actions CI for typecheck, unit tests and production builds.
+- Product research, competitor analysis, business workflows, functional requirements, architecture and QA documentation.
+- Institute sign-in UI, CSRF bootstrap, session-aware API client and sign-out.
+- Institute dashboard with live API-backed student, batch, enquiry and admission metrics.
+- Enquiry CRM UI/API: create, search, status transitions, activity, assignment, archive/restore and admission conversion.
+- Course and batch management UI/API with branch-scoped records.
+- Student directory UI/API with search and pagination.
+- Attendance UI/API: class sessions, student roster, marking and submission/lock.
+- Fee UI/API: student charges, payment allocation, receipt numbering and payment history.
+- Syllabus/question bank UI/API: subjects, chapters, topics, question authoring, review/publish status and version creation.
+- PostgreSQL migrations for identity/tenancy, admissions, attendance, finance ledger and question bank, with tenant RLS enabled/forced on tenant-owned records.
+- GitHub Actions CI: typecheck, six API domain tests and production builds.
 
-### Still in progress
+### Known unfinished areas
 
-- The dashboard navigation still contains placeholder screens; the new courses, batches and student APIs are not yet wired into the React UI.
-- Paper Builder and Test Management are browser-local demo features, not shared multi-device services.
-- Question bank, syllabus mapping, timetable, attendance, homework, fees/collections/refunds, secure online attempts, evaluation and result analytics require implementation.
-- Database-backed integration/security tests and production operational validation remain outstanding.
+- Dashboard-connected modules listed above are at the initial operational workflow stage; end-to-end PostgreSQL integration tests and tenant-isolation abuse tests remain required.
+- Paper Builder, Student Exam Runner/Library and Results still use browser-local demo storage. They are not yet a shared multi-device examination system.
+- Full exam scheduling/assignment, student portal login/linking, server-authoritative exam timer, persistent answer autosave/recovery, objective/subjective grading and result publication are not yet implemented.
+- Fee instalment plans, concessions, refund/reversal approval and accounting reconciliation are not yet complete.
+- Timetable, homework, study material, guardian relationship management, faculty management and academic-year lifecycle remain outstanding.
+- Production launch is blocked pending database deployment/migration, real institute pilot, privacy/tax review, security testing, load testing, monitoring and backup-restore validation.
 
 ## Product modules
 
@@ -38,24 +40,15 @@ The latest verified GitHub Actions run passes frontend/backend TypeScript checks
 7. Online examinations with server-authoritative timing, autosave and recovery.
 8. Objective/manual evaluation, result publication and analytics.
 
-## Development principles
-
-- Core workflows must not depend on third-party APIs.
-- Tenant and branch authorization is enforced server-side and at the database layer.
-- Question, paper, attempt, result and financial history must remain auditable.
-- Blueprint shortages must be reported; questions must never be silently substituted.
-- Responsive, keyboard-accessible UI with Hindi/English readiness.
-- No production capacity or compliance claim without evidence.
-
 ## Documentation
 
 - `docs/INDUSTRY-RESEARCH-AND-COMPETITOR-ANALYSIS.md` — market segments, public-source competitor comparison and product priorities.
 - `docs/INDUSTRY-RESEARCH-COMPETITOR-ANALYSIS.md` — earlier research baseline; reconcile/archive after review.
-- `docs/BUSINESS-WORKFLOWS.md` and `docs/END-TO-END-BUSINESS-WORKFLOWS.md` — operational workflows.
-- `docs/FUNCTIONAL-REQUIREMENTS-AND-ACCEPTANCE.md` — roles, requirement IDs and acceptance criteria.
+- `docs/BUSINESS-WORKFLOWS.md` and `docs/END-TO-END-BUSINESS-WORKFLOWS.md` — institute workflows.
+- `docs/FUNCTIONAL-REQUIREMENTS-AND-ACCEPTANCE.md` — roles, requirements and acceptance criteria.
 - `docs/ARCHITECTURE.md`, `docs/DATA-MODEL.md`, `docs/SRS.md` — technical baseline.
-- `docs/QA-PLAN.md` — test and release gates.
-- `docs/ROADMAP.md` — implementation phases and verified status.
+- `docs/QA-PLAN.md` — testing and release gates.
+- `docs/ROADMAP.md` — implementation phases and remaining work.
 
 ## Local development
 
@@ -73,13 +66,14 @@ The web app runs at `http://localhost:5173`; the API runs at `http://localhost:4
 
 ### Database setup
 
+Copy `.env.example` to `.env`, set a local PostgreSQL URL and unique development bootstrap credentials, then run:
+
 ```bash
-# from the repository root
 npm run migrate --workspace @coaching/api
 npm run seed --workspace @coaching/api
 ```
 
-Before running the seed command, set `DATABASE_URL` and the bootstrap variables documented in `apps/api/README.md`. Never use real production credentials in local development or commit secrets.
+The migration runner applies ordered `NNN_name.sql` files and records applied migrations in `schema_migrations`. Never commit real secrets or reuse production credentials in local development.
 
 ### API health
 
