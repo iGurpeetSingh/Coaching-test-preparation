@@ -147,12 +147,18 @@ resultsRouter.patch("/results/attempts/:id/grades", requirePermission("results.m
             graded_by_membership_id=EXCLUDED.graded_by_membership_id, graded_at=now()
         `.execute(trx);
       }
+      const gradeTotal = await sql<{ total: string | number }>`
+        SELECT coalesce(sum(awarded_marks),0)::numeric(10,2) AS total
+        FROM exam_attempt_grades
+        WHERE tenant_id=${auth.tenantId} AND attempt_id=${attemptId}
+      `.execute(trx);
+      const allManualMarks = Number(gradeTotal.rows[0]?.total || 0);
       const updated = await sql<any>`
         UPDATE exam_attempts
-        SET status='graded', score=coalesce(score,0)+${manualScore},
+        SET status='graded', score=objective_score+${allManualMarks},
             graded_at=now(), updated_at=now()
         WHERE tenant_id=${auth.tenantId} AND id=${attemptId}
-        RETURNING id, status, total_marks, score, correct_count, incorrect_count,
+        RETURNING id, status, total_marks, score, objective_score, correct_count, incorrect_count,
                   unanswered_count, submitted_at, graded_at
       `.execute(trx);
       await sql`
