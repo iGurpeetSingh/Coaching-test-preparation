@@ -2,7 +2,7 @@
 
 A multi-tenant coaching-institute operations and test-preparation platform. The repository contains product research, a React/Vite dashboard and an Express/PostgreSQL API.
 
-## Verified repository status — 16 November 2026
+## Verified repository status — 17 November 2026
 
 The latest GitHub Actions run on the main branch passed frontend/backend TypeScript checks, six API domain unit tests and both production builds.
 
@@ -23,8 +23,9 @@ The latest GitHub Actions run on the main branch passed frontend/backend TypeScr
 ### Known unfinished areas
 
 - Dashboard-connected modules listed above are at the initial operational workflow stage; end-to-end PostgreSQL integration tests and tenant-isolation abuse tests remain required.
-- Paper Builder, Student Exam Runner/Library and Results still use browser-local demo storage. They are not yet a shared multi-device examination system.
-- Full exam scheduling/assignment, student portal login/linking, server-authoritative exam timer, persistent answer autosave/recovery, objective/subjective grading and result publication are not yet implemented.
+- Paper Builder is intentionally local-only: it loads dummy question sets, previews/prints papers and saves drafts/published demo papers in browser localStorage. The Paper menu does not call a paper API.
+- Student Exam Runner/Library and Results still use browser-local demo storage or separate API-backed prototype flows; they are not yet one fully integrated multi-device examination system.
+- The local Paper demo is not connected to the server-side exam scheduler or student portal. Full exam assignment, a production student portal, server-authoritative timing, persistent answer autosave/recovery, grading and result publication remain separate implementation/release work.
 - Fee instalment plans, concessions, refund/reversal approval and accounting reconciliation are not yet complete.
 - Timetable, homework, study material, guardian relationship management, faculty management and academic-year lifecycle remain outstanding.
 - Production launch is blocked pending database deployment/migration, real institute pilot, privacy/tax review, security testing, load testing, monitoring and backup-restore validation.
