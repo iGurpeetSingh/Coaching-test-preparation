@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import ExamManagementPage from "./features/exams/ExamManagementPage";
+import PaperBuilder from "./features/papers/PaperBuilder";
+import "./features/papers/paper-demo-mode.css";
 import StudentExamPage from "./features/exams/StudentExamPage";
 import ResultsPage from "./features/results/ResultsPage";
 import AuthScreen from "./features/auth/AuthScreen";
@@ -34,6 +36,7 @@ function App() {
   const [active, setActive] = useState("Dashboard");
   const [query, setQuery] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
+  const [paperDemoMode, setPaperDemoMode] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUserResponse | null>(null);
   const [dashboardStats, setDashboardStats] = useState({
     students: "—", batches: "—", enquiries: "—", admissions: "—"
@@ -104,8 +107,26 @@ function App() {
   if (authLoading) {
     return <div className="auth-page"><div className="auth-card">Loading secure institute session…</div></div>;
   }
+  if (paperDemoMode) {
+    return (
+      <main className="paper-demo-screen">
+        <header className="paper-demo-screen-header">
+          <div><strong>Coaching Pro · Paper Demo</strong><span>LOCAL MODE · NO PAPER API</span></div>
+          <button type="button" onClick={() => setPaperDemoMode(false)}>Back to sign in</button>
+        </header>
+        <div className="paper-demo-screen-content">
+          <PaperBuilder onBack={() => setPaperDemoMode(false)} />
+        </div>
+      </main>
+    );
+  }
   if (!currentUser) {
-    return <AuthScreen onSignedIn={handleSignedIn} />;
+    return (
+      <AuthScreen
+        onSignedIn={handleSignedIn}
+        onOpenPaperDemo={() => setPaperDemoMode(true)}
+      />
+    );
   }
 
   const displayName = currentUser.user.fullName || "Institute User";
@@ -184,7 +205,9 @@ function App() {
 
           {active === "My Exams" ? (
             <StudentExamPage />
-          ) : active === "Tests & Exams" || active === "Paper" ? (
+          ) : active === "Paper" ? (
+            <PaperBuilder onBack={() => setActive("Dashboard")} />
+          ) : active === "Tests & Exams" ? (
             <ExamManagementPage />
           ) : active === "Fee Management" ? (
             <FeeManagementPage permissions={currentUser.permissions} />
