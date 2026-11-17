@@ -347,3 +347,64 @@ B) new
 C) return
 D) static
 Answer: B`;
+
+
+export const DEMO_WRITTEN_QUESTIONS_TEXT = `1. Explain the main functions of an operating system and describe how it manages computer hardware and software resources.
+Marks: 6
+
+2. Differentiate between RAM and ROM with suitable examples.
+Marks: 6
+
+3. Explain the input-process-output cycle with a practical computer example.
+Marks: 6
+
+4. Describe the role of the CPU and explain the functions of the Control Unit and ALU.
+Marks: 6
+
+5. What is a computer network? Explain LAN, MAN and WAN.
+Marks: 6
+
+6. Explain the difference between system software and application software.
+Marks: 6
+
+7. Describe the steps involved in creating, saving and printing a document in a word processor.
+Marks: 6
+
+8. Explain what a database is and describe the purpose of a primary key.
+Marks: 6
+
+9. Define an algorithm and explain any four characteristics of a good algorithm.
+Marks: 6
+
+10. Explain the concepts of class, object and constructor in object-oriented programming.
+Marks: 6
+
+11. Define hardware and software.
+Marks: 4
+
+12. What is an input device? Give two examples.
+Marks: 4
+
+13. Write the full forms of HTML and URL.
+Marks: 4
+
+14. What is the purpose of a web browser?
+Marks: 4
+
+15. Differentiate between a file and a folder.
+Marks: 4
+
+16. What is the use of a spreadsheet application?
+Marks: 4
+
+17. Define a computer virus and name two safety practices.
+Marks: 4
+
+18. What is cloud computing?
+Marks: 4
+
+19. Explain the difference between a compiler and an interpreter.
+Marks: 4
+
+20. What is encapsulation in object-oriented programming?
+Marks: 4`;
