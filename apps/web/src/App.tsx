@@ -115,7 +115,7 @@ function App() {
           <button type="button" onClick={() => setPaperDemoMode(false)}>Back to sign in</button>
         </header>
         <div className="paper-demo-screen-content">
-          <PaperBuilder onBack={() => setPaperDemoMode(false)} />
+          <PaperBuilder backLabel="← Back to sign in" onBack={() => setPaperDemoMode(false)} />
         </div>
       </main>
     );
