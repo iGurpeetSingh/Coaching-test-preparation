@@ -12,6 +12,7 @@ import {
   type PaperType,
   type WrittenQuestion,
 } from "./demo-paper-store";
+import { DEMO_OBJECTIVE_QUESTIONS_TEXT, DEMO_WRITTEN_QUESTIONS_TEXT } from "./demo-question-bank";
 import "./paper-builder.css";
 import "./demo-paper.css";
 
@@ -239,7 +240,13 @@ export default function PaperBuilder({ onBack }: { onBack: () => void }) {
   const [duration, setDuration] = useState(60);
   const [startAtInput, setStartAtInput] = useState(localDateTime());
   const [instructions, setInstructions] = useState("Read all questions carefully. Select or write your answers before submitting.");
-  const [rawText, setRawText] = useState("");
+  const [objectiveRawText, setObjectiveRawText] = useState(DEMO_OBJECTIVE_QUESTIONS_TEXT);
+  const [writtenRawText, setWrittenRawText] = useState(DEMO_WRITTEN_QUESTIONS_TEXT);
+  const rawText = paperType === "objective" ? objectiveRawText : writtenRawText;
+  const setRawText = (value: string) => {
+    if (paperType === "objective") setObjectiveRawText(value);
+    else setWrittenRawText(value);
+  };
   const [parsed, setParsed] = useState<ParsedPaper | null>(null);
   const [showAnswers, setShowAnswers] = useState(false);
   const [message, setMessage] = useState("");
@@ -283,7 +290,8 @@ export default function PaperBuilder({ onBack }: { onBack: () => void }) {
     setDuration(paper.durationMinutes);
     setStartAtInput(toLocalDateTime(paper.startAt));
     setInstructions(paper.instructions || "");
-    setRawText(serializePaper(paper));
+    if (paper.paperType === "objective") setObjectiveRawText(serializePaper(paper));
+    else setWrittenRawText(serializePaper(paper));
     setParsed(parsePaper(paper.paperType, serializePaper(paper)));
     setShowAnswers(false);
     setMessage("Loaded saved paper " + paper.title + " for editing.");
@@ -355,7 +363,7 @@ export default function PaperBuilder({ onBack }: { onBack: () => void }) {
     setParsed(result);
     setShowAnswers(false);
     setMessage(publish
-      ? saved.title + " published. It is now available in Student Exams in this same browser."
+      ? saved.title + " published in the local Paper demo. No external exam API was called."
       : saved.title + " saved as a draft in this browser.");
     refreshStoredData();
   }
@@ -389,8 +397,8 @@ export default function PaperBuilder({ onBack }: { onBack: () => void }) {
       </div>
 
       <div className="demo-mode-banner">
-        <strong>Local demo storage</strong>
-        Papers, student attempts and results are stored in this browser. No Python repository, Render URL or external exam API is used. Use the same browser profile for admin and student testing.
+        <strong>Local dummy-data mode · Paper API disabled</strong>
+        Paper creation, preview, answer keys, draft saving and publishing use sample questions and this browser's local storage only. This screen makes no API requests. Data is not shared across browsers or devices.
       </div>
 
       <div className="builder-layout">
@@ -435,10 +443,11 @@ export default function PaperBuilder({ onBack }: { onBack: () => void }) {
               spellCheck={false}
             />
             <div className="demo-builder-actions">
+              <button className="secondary-button" type="button" onClick={() => { setRawText(paperType === "objective" ? DEMO_OBJECTIVE_QUESTIONS_TEXT : DEMO_WRITTEN_QUESTIONS_TEXT); setEditingId(null); resetParsed(); setMessage("Sample questions loaded. Preview to validate the paper."); }}>Load sample questions</button>
               <button className="secondary-button" type="button" onClick={previewPaper}>Preview parsed paper</button>
               <button className="secondary-button" type="button" onClick={() => persistPaper(false)}>Save Draft</button>
               <button className="generate-button" type="button" onClick={() => persistPaper(true)}>Publish {paperType === "objective" ? "Objective" : "Written"} Exam</button>
-              {editingId && <button className="secondary-button" type="button" onClick={() => { setEditingId(null); setRawText(""); setParsed(null); setMessage("Ready for a new paper."); }}>New paper</button>}
+              {editingId && <button className="secondary-button" type="button" onClick={() => { setEditingId(null); setRawText(paperType === "objective" ? DEMO_OBJECTIVE_QUESTIONS_TEXT : DEMO_WRITTEN_QUESTIONS_TEXT); setParsed(null); setMessage("Ready for a new paper. Sample questions are loaded."); }}>New paper</button>}
             </div>
             {message && <div className={parsed ? "builder-message success" : "builder-message warning"} role="status">{message}</div>}
           </div>
