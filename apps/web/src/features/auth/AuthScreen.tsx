@@ -6,9 +6,10 @@ type Workspace = { name: string; slug: string };
 
 type Props = {
   onSignedIn: () => Promise<void>;
+  onOpenPaperDemo: () => void;
 };
 
-export default function AuthScreen({ onSignedIn }: Props) {
+export default function AuthScreen({ onSignedIn, onOpenPaperDemo }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [tenantSlug, setTenantSlug] = useState("");
@@ -70,6 +71,11 @@ export default function AuthScreen({ onSignedIn }: Props) {
             {busy ? "Signing in…" : "Sign in to workspace"}
           </button>
         </form>
+        <div className="auth-demo-divider"><span>OR</span></div>
+        <button type="button" className="auth-demo-action" onClick={onOpenPaperDemo}>
+          Open Paper Builder with dummy data
+        </button>
+        <p className="auth-demo-note">Local Paper demo only. No Paper API or institute login is required; data stays in this browser.</p>
         <p className="auth-footnote">Access is protected by institute membership and role permissions.</p>
       </section>
     </main>
