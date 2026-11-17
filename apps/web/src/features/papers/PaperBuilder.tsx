@@ -232,7 +232,7 @@ function WrittenAttemptCard({ attempt, onUpdated }: { attempt: DemoAttempt; onUp
   );
 }
 
-export default function PaperBuilder({ onBack }: { onBack: () => void }) {
+export default function PaperBuilder({ onBack, backLabel = "← Dashboard" }: { onBack: () => void; backLabel?: string }) {
   const [paperType, setPaperType] = useState<PaperType>("objective");
   const [title, setTitle] = useState("Computer Basics Practice Test");
   const [subject, setSubject] = useState("Computer");
@@ -381,7 +381,7 @@ export default function PaperBuilder({ onBack }: { onBack: () => void }) {
   return (
     <div className="paper-builder">
       <div className="builder-toolbar">
-        <button className="back-link" onClick={onBack}>← Dashboard</button>
+        <button className="back-link" onClick={onBack}>{backLabel}</button>
         <div className="builder-actions">
           <span className="draft-tag">DEMO PAPER WORKSPACE</span>
           <button className="secondary-button" type="button" disabled={!parsed} onClick={() => setShowAnswers((value) => !value)}>
@@ -463,7 +463,7 @@ export default function PaperBuilder({ onBack }: { onBack: () => void }) {
             <p>{paperType === "objective" ? "Every objective question carries 2 marks and needs four options plus a correct answer." : "Each written question must carry 2, 4 or 6 marks. The final total must be 100."}</p>
           </div>
           <div className="workflow-tip">
-            <span>ⓘ</span><div><strong>Demo publishing</strong><p>Publish makes the current paper appear in Student Exams in this same browser. Unpublish hides it without deleting saved attempts.</p></div>
+            <span>ⓘ</span><div><strong>Local demo publishing</strong><p>Publish marks this paper as published in the Paper demo workspace only. It is not sent to the API or student portal. Unpublish keeps the saved draft and local attempts.</p></div>
           </div>
         </aside>
       </div>
