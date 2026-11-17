@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-Status updated: 16 November 2026. Checkmarks mean code or documentation exists in the repository; they do not imply production validation.
+Status updated: 17 November 2026. Checkmarks mean code or documentation exists in the repository; they do not imply production validation.
 
 ## Phase 0 — Repository foundation
 - [x] Product research, requirements and architecture documentation baseline.
@@ -41,10 +41,12 @@ Status updated: 16 November 2026. Checkmarks mean code or documentation exists i
 - [ ] Multi-reviewer approval, media attachments and richer answer-key editing.
 
 ## Phase 4 — Paper Generator
-- [ ] Replace browser-local Paper Builder store with database-backed paper APIs.
-- [ ] Blueprint editor, section/marks constraints and shortage report.
-- [ ] Deterministic question selection, duplicate prevention and immutable paper snapshots.
-- [ ] Printable question paper and answer-key PDF.
+- [x] Separate Paper menu from API-backed exam administration; Paper Builder does not make paper API requests.
+- [x] Local dummy-data mode available from the sign-in screen without institute login.
+- [x] Preloaded sample set: 50 objective MCQs (100 marks) and 20 written questions (100 marks).
+- [x] Local draft save, publish/unpublish, paper preview, answer-key toggle and print/PDF actions using browser storage.
+- [ ] Blueprint editor, section/marks constraints and shortage report using configurable local sample data.
+- [ ] Deterministic local question selection, duplicate prevention and immutable paper snapshots.
 
 ## Phase 5 — Online Examinations
 - [ ] Secure student/guardian portal account linking and exam eligibility.
