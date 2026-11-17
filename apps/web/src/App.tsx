@@ -33,10 +33,11 @@ const managementLinks = [
 ] as const;
 
 function App() {
+  const isPaperDemoRoute = new URLSearchParams(window.location.search).get("mode") === "paper-demo";
   const [active, setActive] = useState("Dashboard");
   const [query, setQuery] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
-  const [paperDemoMode, setPaperDemoMode] = useState(false);
+  const [paperDemoMode, setPaperDemoMode] = useState(isPaperDemoRoute);
   const [currentUser, setCurrentUser] = useState<CurrentUserResponse | null>(null);
   const [dashboardStats, setDashboardStats] = useState({
     students: "—", batches: "—", enquiries: "—", admissions: "—"
@@ -46,6 +47,10 @@ function App() {
 
   useEffect(() => {
     let activeRequest = true;
+    if (isPaperDemoRoute) {
+      setAuthLoading(false);
+      return () => { activeRequest = false; };
+    }
     (async () => {
       try {
         await bootstrapCsrf();
@@ -58,7 +63,7 @@ function App() {
       }
     })();
     return () => { activeRequest = false; };
-  }, []);
+  }, [isPaperDemoRoute]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -107,15 +112,22 @@ function App() {
   if (authLoading) {
     return <div className="auth-page"><div className="auth-card">Loading secure institute session…</div></div>;
   }
+  function leavePaperDemoMode() {
+    setPaperDemoMode(false);
+    if (isPaperDemoRoute) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }
+
   if (paperDemoMode) {
     return (
       <main className="paper-demo-screen">
         <header className="paper-demo-screen-header">
           <div><strong>Coaching Pro · Paper Demo</strong><span>LOCAL MODE · NO PAPER API</span></div>
-          <button type="button" onClick={() => setPaperDemoMode(false)}>Back to sign in</button>
+          <button type="button" onClick={leavePaperDemoMode}>Back to sign in</button>
         </header>
         <div className="paper-demo-screen-content">
-          <PaperBuilder backLabel="← Back to sign in" onBack={() => setPaperDemoMode(false)} />
+          <PaperBuilder backLabel="← Back to sign in" onBack={leavePaperDemoMode} />
         </div>
       </main>
     );
