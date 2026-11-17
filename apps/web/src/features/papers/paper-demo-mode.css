@@ -1,0 +1,8 @@
+.paper-demo-screen { min-height:100vh; background:#f7f6fb; }
+.paper-demo-screen-header { position:sticky; top:0; z-index:5; display:flex; justify-content:space-between; align-items:center; gap:14px; padding:13px 24px; border-bottom:1px solid #e9e6f0; background:rgba(255,255,255,.96); }
+.paper-demo-screen-header > div { display:grid; gap:3px; }
+.paper-demo-screen-header strong { color:#29233d; font-size:13px; }
+.paper-demo-screen-header span { color:#8a82a0; font-size:8px; font-weight:800; letter-spacing:1.1px; }
+.paper-demo-screen-header button { border:1px solid #e5e1ed; border-radius:8px; padding:8px 12px; background:#fff; color:#655b7c; font:inherit; font-size:11px; cursor:pointer; }
+.paper-demo-screen-content { max-width:1440px; margin:0 auto; padding:22px; }
+@media(max-width:600px){ .paper-demo-screen-header{padding:12px 15px;} .paper-demo-screen-content{padding:14px;} }
